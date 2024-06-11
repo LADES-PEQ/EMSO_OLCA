@@ -1,0 +1,152 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Petrobras
+*--------------------------------------------------------------------
+* Nome do arquivo: turbine_w.mso
+* Projeto: Modelo integrado de producao de etanol 1G/2G
+* Conteudo: turbina 
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Versao 2.2
+* Data:    03/2016
+* Autores:   Anderson R. A. Lino e Gabriel C. Fonseca
+* 
+*--------------------------------------------------------------------
+*Descricao: modelo da turbina que sera empregado na biorrefinaria
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+*Notas: Foi feito o flowsheet teste para averiguar o modelo e outro 
+* para averiguar as propriedades
+*--------------------------------------------------------------------*#
+
+using "..//water_stream";
+using "..//energy_stream";
+
+
+Model turbine_w
+ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/turbine";
+	Brief 		= "Simplified Turbine Model";
+	Info = 
+"== GENERAL ==
+	Model of a steam turbine based on the isoentropric efficiency
+	and the mechanical efficiency.
+	
+== ASSUMPTIONS ==
+* Steady-state;
+* Adiabatic.
+
+== SPECIFY ==
+* Inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition;
+* Pressure drop or outlet stream pressure;
+* Turbine isoentropic efficiency;
+* Turbine mechanical efficiency.
+
+== SET ==
+* Specify the phase that comes out of the source.
+";
+
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin 				(Brief="Steam tables", Symbol = "{}", Type="water");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+	H_IS		as enth_mass			(Brief = "Outlet Isoentropic Mass Enthalpy", Symbol = "H_{isoentr}");
+	EF_T		as efficiency 			(Brief = "Turbine Efficiency", Symbol = "\eta_{term}", Default = 0.5);
+	EF_ME		as efficiency 			(Brief = "Turbine Mechanical and Electric Efficiency", Symbol = "\eta_{mech}", Default = 0.96);
+	#q_losses	as heat_rate			(Brief = "Heat Losses", Symbol = "q_{loss}");
+	
+in	Inlet		as water_stream 		(Brief = "Inlet Current", PosX=0.08, PosY=0.0, Symbol="_{in}", Protected = true);
+out	Outlet		as water_stream_vapfrac (Brief = "Outlet Current", PosX=0.665, PosY=1.0, Symbol="_{out}", Protected = false);
+out Outlet_p	as power_stream			(Brief = "Eletric Power Generated", PosX=0.94, PosY=0.5, Symbol="_{out}");
+
+	Pdrop		as press_delta 			(Brief = "Pressure Drop", Symbol = "\Delta P");
+	Pout		as pressure				(Brief = "Outlet Pressure", Symbol = "\P_out");
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	"Mass Balance"
+	Outlet.Fw = Inlet.Fw;
+	
+	"Pressure Drop"
+	Inlet.P = Outlet.P + Pdrop;
+	
+	"Outlet Pressure"
+	Outlet.P = Pout;
+
+	"Outlet Isoentropic Mass Enthalpy"
+	H_IS = propterm.propPS(Outlet.P, Inlet.S);
+
+	"Outlet Real Mass Enthalpy"
+	Outlet.H = (H_IS - Inlet.H) * EF_T + Inlet.H;
+
+	"Outlet Mass Entropy and Temperature, array = [Outlet.S, Outlet.H]"
+	[Outlet.S, Outlet.T] = propterm.propPH(Outlet.P, Outlet.H);
+	
+	"Eletric Power Generated"
+	Inlet.Fw * (Inlet.H - Outlet.H) * EF_ME = Outlet_p.W ;
+	
+	#"Energy Balance"
+	#q_losses + Outlet_p.W = Inlet.Fw * (Inlet.H - Outlet.H);
+
+end
+
+FlowSheet teste_turbine_w
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#
+	
+	DEVICES
+	S101 as water_sourceR;
+	T101 as turbine_w;
+	
+#*-------------------------------------------------------------------
+* Especifica as conexoes entre os modelos
+*--------------------------------------------------------------------*#
+	
+	CONNECTIONS
+	S101.Outlet to T101.Inlet;
+	
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+
+	SPECIFY
+
+	S101.Fw = 252100 * 'kg/h';
+	S101.T = (520 + 273.15) * 'K';
+	S101.P = 120 * 'bar';
+
+	T101.Outlet.P = 22 * 'bar';
+	T101.EF_T = 0.8;
+	T101.EF_ME = 0.958;
+	
+	SET
+	S101.ValidPhases = "Vapour-Only";
+	
+#*-------------------------------------------------------------------
+* Condicoes iniciais e opcoes de Solver
+*--------------------------------------------------------------------*#
+	
+	OPTIONS
+	Dynamic = false;
+
+end

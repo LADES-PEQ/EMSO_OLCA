@@ -1,0 +1,740 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Petrobras 
+*--------------------------------------------------------------------
+* Nome do arquivo: water_stream.mso
+* Projeto: Modelo integrado de producao de etanol 1G/2G
+* Conteudo: corrente de agua 
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Data:    03/2016
+* Autores:   Anderson R. A. Lino e Gabriel C. Fonseca
+* versao 1.0
+*--------------------------------------------------------------------
+*Descricao: modelo da corrente de agua que sera utilizado
+*na simulacao do processo 
+*--------------------------------------------------------------------*#
+
+using "types";
+	
+Model water_stream
+	
+	ATTRIBUTES
+	Brief= "Basic Water Stream";
+	Color = "blue";
+	Info = 
+"== GENERAL ==
+* This stream should be used when the current is known to be composed only by water (liquid or vapour);
+* All the variables are based on mass.
+";
+
+#*-------------------------------------------------------------------
+* Declaracao de variaveis 
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+
+	Fw as flow_mass 	(Brief = "Stream Mass Flow");
+	P as pressure		(Brief = "Stream Pressure", Default = 10, Lower = 5e-3, Upper = 200);
+	T as temperature 	(Brief = "Stream Pressure", Default = 600, Lower = 273.16, Upper = 900);
+	S as entr_mass		(Brief = "Stream Mass Entropy", Default = 5, Lower = 1e-3,Upper = 20);
+	H as enth_mass		(Brief = "Stream Mass Pressure", Default = 3000, Lower = 1, Upper = 7000);
+	v as fraction 		(Brief = "Vapour Fraction");
+	
+end
+
+Model water_stream_vapfrac as water_stream
+	ATTRIBUTES
+	Brief= "Water Stream With Built-in Vapour Fraction Calculation";
+	Color = "blue";
+	Info = 
+"== GENERAL ==
+* This stream should be used when the vapour fraction is unknown;
+* Vapour fraction is determined by comparison with saturated water and steam enthalpy.
+";
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+	
+	PARAMETERS
+	
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+	
+	Hl as enth_mass (Brief = "Saturated Water Enthalpy", Hidden = true);
+	Hv as enth_mass (Brief = "Saturated Steam Enthalpy", Hidden = true);
+	Sl as entr_mass (Brief = "Saturated Water Entropy", Hidden = true);
+	Sv as entr_mass (Brief = "Saturated Steam Entropy", Hidden = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	
+	"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+	[Sv, Hv] = propterm.propPTv(P, propterm.Tsat(P));
+	
+	"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	[Sl, Hl] = propterm.propPTl(P, propterm.Tsat(P));
+	
+	if H > Hv then
+		"Vapour fraction"
+		v = 1;
+	else if H < Hl then
+		"Vapour fraction"
+		v = 0;
+	else
+		"Vapour Fraction"
+		(Hv - Hl) * v = (H - Hl);
+	end
+	end
+	
+end
+
+Model water_stream_eq as water_stream
+	ATTRIBUTES
+	Brief= "Water Stream With Specified State";
+	Color = "blue";
+	Info = 
+"== GENERAL ==
+* This stream should be used when the state is known: subcooled water, superheated steam or liquid-vapour equilibrium;
+* When subcooled water or superheated steam is choosen, the user should specify the pressure and temperature;
+* When liquid-vapour equilibrium is choosen, the user should specify the vapour fraction and the pressure or the temperature.
+";
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+	
+	PARAMETERS
+	
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	ValidPhases as Switcher (Brief = "Saturation State of the Stream", Valid = ["Vapour-Only", "Liquid-Only", "Vapour-Liquid"], Default = "Vapour-Liquid");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+	
+	Hl as enth_mass (Brief = "Saturated Water Mass Enthalpy", Hidden = true);
+	Hv as enth_mass (Brief = "Saturated Steam Mass Enthalpy", Hidden = true);
+	Sl as entr_mass (Brief = "Saturated Water Mass Entropy", Hidden = true);
+	Sv as entr_mass (Brief = "Saturated Steam Mass Entropy", Hidden = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	
+	"Saturated Water Mass Enthalpy and Entropy, array = [Sl, Hl]"
+	[Sl, Hl] = propterm.propPTl(P, propterm.Tsat(P));
+
+	"Saturated Steam Mass Enthalpy and Entropy, array = [Sv, Hv]"
+	[Sv, Hv] = propterm.propPTv(P, propterm.Tsat(P));
+	
+switch ValidPhases
+	
+	case "Vapour-Only":
+	
+		"Superheated Steam Condition"
+			v = 1;
+		
+		"Outlet Mass Entropy and Enthalpy , array = [S, H]"
+			[S, H] = propterm.propPTv(P, T);
+			
+		when T <= propterm.Tsat(P) switchto "Liquid-Only";
+	
+	case "Liquid-Only":
+	
+		"Subcooled Water Condition"
+			v = 0;
+
+		"Outlet Mass Entropy and Enthalpy, array = [S, H]"
+			[S, H] = propterm.propPTl(P, T);
+			
+		when T > propterm.Tsat(P) switchto "Vapour-Only";
+	
+	case "Vapour-Liquid":
+	
+		"Saturation Temperature"
+			T = propterm.Tsat(P);
+		
+		"Outlet Mass Entropy"
+			S = Sl + v * (Sv - Sl);
+		
+		"Outlet Mass Enthalpy"
+			H = Hl + v * (Hv - Hl);
+	
+	end
+
+end
+
+
+Model water_stream_eq2 as water_stream
+	
+	#New version to vapour-liquid and liquid transition
+	ATTRIBUTES
+	Brief= "Water Stream With Specified State";
+	Color = "blue";
+	Info = 
+"== GENERAL ==
+* This stream should be used when the state is known: subcooled water, superheated steam or liquid-vapour equilibrium;
+* When subcooled water or superheated steam is choosen, the user should specify the pressure and temperature;
+* When liquid-vapour equilibrium is choosen, the user should specify the vapour fraction and the pressure or the temperature.
+";
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+	
+	PARAMETERS
+	
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	ValidPhases as Switcher (Brief = "Saturation State of the Stream", Valid = ["Vapour-Only", "Liquid-Only", "Vapour-Liquid"], Default = "Vapour-Liquid");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+	
+	Hl as enth_mass (Brief = "Saturated Water Mass Enthalpy", Hidden = true);
+	Hv as enth_mass (Brief = "Saturated Steam Mass Enthalpy", Hidden = true);
+	Sl as entr_mass (Brief = "Saturated Water Mass Entropy", Hidden = true);
+	Sv as entr_mass (Brief = "Saturated Steam Mass Entropy", Hidden = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	
+	"Saturated Water Mass Enthalpy and Entropy, array = [Sl, Hl]"
+	[Sl, Hl] = propterm.propPTl(P, propterm.Tsat(P));
+
+	"Saturated Steam Mass Enthalpy and Entropy, array = [Sv, Hv]"
+	[Sv, Hv] = propterm.propPTv(P, propterm.Tsat(P));
+	
+switch ValidPhases
+	
+	case "Vapour-Only":
+	
+		"Superheated Steam Condition"
+			v = 1;
+		
+		"Outlet Mass Entropy and Enthalpy , array = [S, H]"
+			[S, H] = propterm.propPTv(P, T);
+		
+					
+		when T <= propterm.Tsat(P) switchto "Vapour-Liquid";
+	
+	case "Liquid-Only":
+	
+		"Subcooled Water Condition"
+			v = 0;
+
+		"Outlet Mass Entropy and Enthalpy, array = [S, H]"
+			[S, H] = propterm.propPTl(P, T);
+			
+		#when T > propterm.Tsat(P) switchto "Vapour-Only";
+		when T >= propterm.Tsat(P) switchto "Vapour-Liquid";
+		
+	
+	case "Vapour-Liquid":
+	
+		"Saturation Temperature"
+			T = propterm.Tsat(P);
+		
+		"Outlet Mass Entropy"
+			S = Sl + v * (Sv - Sl);
+		
+		"Outlet Mass Enthalpy"
+			H = Hl + v * (Hv - Hl);
+		
+		when v < 0 switchto "Liquid-Only";
+		when v > 1 switchto "Vapour-Only";
+	
+	end
+
+end
+
+
+
+Model water_sourceR
+
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/waterR"; 
+	Brief 		= "Water Stream Source";
+	Info = 
+"== GENERAL ==
+	This model should be used for boundary streams.
+	Usually these streams are known and come from other process units.
+	The user should choose the state of the stream: subcooled water, superheated steam or liquid-vapour equilibrium.
+	When subcooled water or superheated steam is choosen, the user should specify the pressure and temperature.
+	When liquid-vapour equilibrium is choosen, the user should specify the vapour fraction and the pressure or the temperature.
+
+== SPECIFY ==
+* If subcooled water or superheated steam: pressure and temperature;
+* If liquid-vapour equilibrium: vapour fraction and temperature or pressure;
+* Additionally, the user should always specify the Mass Flow;
+
+== ADITIONAL INFORMATION ==
+* Mass Enthalpy;
+* Mass Entropy.
+";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+
+	propterm 	as Plugin 	(Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	ValidPhases as Switcher (Brief = "Saturation State of the Stream", Valid = ["Vapour-Only", "Liquid-Only", "Vapour-Liquid"], Default = "Vapour-Liquid");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+
+out Outlet 		as water_stream	(Brief = "Outlet Water Stream", PosX = 1.0, PosY = 0.5256, Symbol="_{out}", Protected = true);
+	P 			as pressure		(Brief = "Stream Pressure");
+	Fw 			as flow_mass	(Brief = "Stream Mass Flow");
+	T 			as temperature	(Brief = "Stream Temperature", Default = 300);
+	v 			as fraction 	(Brief = "Vapour fraction");
+	
+	Hl as enth_mass (Brief = "Saturated Water Mass Enthalpy", Hidden = true);
+	Hv as enth_mass (Brief = "Saturated Steam Mass Enthalpy", Hidden = true);
+	Sl as entr_mass (Brief = "Saturated Water Mass Entropy", Hidden = true);
+	Sv as entr_mass (Brief = "Saturated Steam Mass Entropy", Hidden = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+
+	"Saturated Water Mass Enthalpy and Entropy, array = [Sl, Hl]"
+		[Sl, Hl] = propterm.propPTl(Outlet.P, propterm.Tsat(Outlet.P));
+
+	"Saturated Steam Mass Enthalpy and Entropy, array = [Sv, Hv]"
+		[Sv, Hv] = propterm.propPTv(Outlet.P, propterm.Tsat(Outlet.P));
+	
+switch ValidPhases
+	
+	case "Vapour-Only":
+	
+		"SuperHeated Steam Condition"
+			Outlet.v = 1;
+		
+		"Outlet Mass Entropy and Enthalpy, array = [S, H]"
+			[Outlet.S, Outlet.H] = propterm.propPTv(Outlet.P, Outlet.T);
+			
+		when T < propterm.Tsat(P) switchto "Liquid-Only";
+	
+	case "Liquid-Only":
+	
+		"Subcooled Water Condition"
+			Outlet.v = 0;
+
+		"Outlet Mass Entropy and Enthalpy, array = [S, H]"
+			[Outlet.S, Outlet.H] = propterm.propPTl(Outlet.P, Outlet.T);
+			
+		when T > propterm.Tsat(P) switchto "Vapour-Only";
+	
+	case "Vapour-Liquid":
+	
+		"Saturation Temperature"
+			Outlet.T = propterm.Tsat(P);
+		
+		"Outlet Mass Entropy"
+			Outlet.S = Sl + Outlet.v * (Sv - Sl);
+		
+		"Outlet Mass Enthalpy"
+			Outlet.H = Hl + Outlet.v * (Hv - Hl);
+	
+	end
+	
+	"Equate Pressure"
+		P = Outlet.P;
+	
+	"Equate Flow"	
+		Fw = Outlet.Fw;
+	
+	"Equate Vapour Fraction"
+		v = Outlet.v;
+	
+	"Equate Temperature"
+		T = Outlet.T;
+end
+
+
+Model water_sourceL
+
+ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/waterL"; 
+	Brief 		= "Water Stream Source";
+	Info = 
+"== GENERAL ==
+	This model should be used for boundary streams.
+	Usually these streams are known and come from other process units.
+	The user should choose the state of the stream: subcooled water, superheated steam or liquid-vapour equilibrium.
+	When subcooled water or superheated steam is choosen, the user should specify the pressure and temperature.
+	When liquid-vapour equilibrium is choosen, the user should specify the vapour fraction and the pressure or the temperature.
+
+== SPECIFY ==
+* If subcooled water or superheated steam: pressure and temperature;
+* If liquid-vapour equilibrium: vapour fraction and temperature or pressure;
+* Additionally, the user should always specify the Mass Flow;
+
+== ADITIONAL INFORMATION ==
+* Mass Enthalpy;
+* Mass Entropy.
+";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+PARAMETERS
+
+	propterm 	as Plugin 	(Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	ValidPhases as Switcher (Brief = "Saturation State of the Stream", Valid = ["Vapour-Only", "Liquid-Only", "Vapour-Liquid"], Default = "Vapour-Liquid");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+VARIABLES
+
+out Outlet 		as water_stream	(Brief = "Outlet Water Stream", PosX = 0, PosY = 0.5256, Symbol="_{out}", Protected = true);
+	P 			as pressure		(Brief = "Stream Pressure");
+	Fw 			as flow_mass	(Brief = "Stream Mass Flow");
+	T 			as temperature	(Brief = "Stream Temperature", Default = 300);
+	v 			as fraction 	(Brief = "Vapour fraction");
+	
+	Hl as enth_mass (Brief = "Saturated Water Mass Enthalpy", Hidden = true);
+	Hv as enth_mass (Brief = "Saturated Steam Mass Enthalpy", Hidden = true);
+	Sl as entr_mass (Brief = "Saturated Water Mass Entropy", Hidden = true);
+	Sv as entr_mass (Brief = "Saturated Steam Mass Entropy", Hidden = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+
+	"Saturated Water Mass Enthalpy and Entropy, array = [Sl, Hl]"
+		[Sl, Hl] = propterm.propPTl(Outlet.P, propterm.Tsat(Outlet.P));
+
+	"Saturated Steam Mass Enthalpy and Entropy, array = [S, H]"
+		[Sv, Hv] = propterm.propPTv(Outlet.P, propterm.Tsat(Outlet.P));
+	
+switch ValidPhases
+	
+	case "Vapour-Only":
+	
+		"SuperHeated Steam Condition"
+			Outlet.v = 1;
+		
+		"Outlet Mass Entropy and Enthalpy, array = [S, H]"
+			[Outlet.S, Outlet.H] = propterm.propPTv(Outlet.P, Outlet.T);
+			
+		when T < propterm.Tsat(P) switchto "Liquid-Only";
+	
+	case "Liquid-Only":
+	
+		"Subcooled Water Condition"
+			Outlet.v = 0;
+
+		"Outlet Mass Entropy and Enthalpy, array = [S, H]"
+			[Outlet.S, Outlet.H] = propterm.propPTl(Outlet.P, Outlet.T);
+			
+		when T > propterm.Tsat(P) switchto "Vapour-Only";
+	
+	case "Vapour-Liquid":
+	
+		"Saturation Temperature"
+			Outlet.T = propterm.Tsat(P);
+		
+		"Outlet Mass Entropy"
+			Outlet.S = Sl + Outlet.v * (Sv - Sl);
+		
+		"Outlet Mass Enthalpy"
+			Outlet.H = Hl + Outlet.v * (Hv - Hl);
+		
+		when v <= 0 switchto "Liquid-Only";
+		when v >= 1 switchto "Vapour-Only";
+	
+	end
+	
+	"Equate Pressure"
+		P = Outlet.P;
+	
+	"Equate Flow"	
+		Fw = Outlet.Fw;
+	
+	"Equate Vapour Fraction"
+		v = Outlet.v;
+	
+	"Equate Temperature"
+		T = Outlet.T;
+end
+
+
+
+Model water_sourceL2
+
+ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/waterL"; 
+	Brief 		= "Water Stream Source";
+	Info = 
+"== GENERAL ==
+	This model should be used for boundary streams.
+	Usually these streams are known and come from other process units.
+	The user should choose the state of the stream: subcooled water, superheated steam or liquid-vapour equilibrium.
+	When subcooled water or superheated steam is choosen, the user should specify the pressure and temperature.
+	When liquid-vapour equilibrium is choosen, the user should specify the vapour fraction and the pressure or the temperature.
+
+== SPECIFY ==
+* If subcooled water or superheated steam: pressure and temperature;
+* If liquid-vapour equilibrium: vapour fraction and temperature or pressure;
+* Additionally, the user should always specify the Mass Flow;
+
+== ADITIONAL INFORMATION ==
+* Mass Enthalpy;
+* Mass Entropy.
+";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+PARAMETERS
+
+	propterm 	as Plugin 	(Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	ValidPhases as Switcher (Brief = "Saturation State of the Stream", Valid = ["Vapour-Only", "Liquid-Only", "Vapour-Liquid"], Default = "Vapour-Liquid");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+VARIABLES
+
+out Outlet 		as water_stream	(Brief = "Outlet Water Stream", PosX = 0, PosY = 0.5256, Symbol="_{out}", Protected = true);
+	P 			as pressure		(Brief = "Stream Pressure");
+	Fw 			as flow_mass	(Brief = "Stream Mass Flow");
+	T 			as temperature	(Brief = "Stream Temperature", Default = 300);
+	v 			as fraction 	(Brief = "Vapour fraction");
+	
+	Hl as enth_mass (Brief = "Saturated Water Mass Enthalpy", Hidden = true);
+	Hv as enth_mass (Brief = "Saturated Steam Mass Enthalpy", Hidden = true);
+	Sl as entr_mass (Brief = "Saturated Water Mass Entropy", Hidden = true);
+	Sv as entr_mass (Brief = "Saturated Steam Mass Entropy", Hidden = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+
+	"Saturated Water Mass Enthalpy and Entropy, array = [Sl, Hl]"
+		[Sl, Hl] = propterm.propPTl(Outlet.P, propterm.Tsat(Outlet.P));
+
+	"Saturated Steam Mass Enthalpy and Entropy, array = [S, H]"
+		[Sv, Hv] = propterm.propPTv(Outlet.P, propterm.Tsat(Outlet.P));
+	
+switch ValidPhases
+	
+	case "Vapour-Only":
+	
+		"SuperHeated Steam Condition"
+			Outlet.v = 1;
+		
+		"Outlet Mass Entropy and Enthalpy, array = [S, H]"
+			[Outlet.S, Outlet.H] = propterm.propPTv(Outlet.P, Outlet.T);
+			
+		when T < propterm.Tsat(P) switchto "Liquid-Only";
+		#when T < propterm.Tsat(P) switchto "Vapour-Liquid";
+		
+	
+	case "Liquid-Only":
+	
+		"Subcooled Water Condition"
+			Outlet.v = 0;
+
+		"Outlet Mass Entropy and Enthalpy, array = [S, H]"
+			[Outlet.S, Outlet.H] = propterm.propPTl(Outlet.P, Outlet.T);
+			
+		when T > propterm.Tsat(P) switchto "Vapour-Only";
+		
+		#when T > propterm.Tsat(P) switchto "Vapour-Liquid";
+	
+	case "Vapour-Liquid":
+	
+		"Saturation Temperature"
+			Outlet.T = propterm.Tsat(P);
+		
+		"Outlet Mass Entropy"
+			Outlet.S = Sl + Outlet.v * (Sv - Sl);
+		
+		"Outlet Mass Enthalpy"
+			Outlet.H = Hl + Outlet.v * (Hv - Hl);
+		
+		when v <= 0 switchto "Liquid-Only";
+		when v >= 1 switchto "Vapour-Only";
+	
+	end
+	
+	"Equate Pressure"
+		P = Outlet.P;
+	
+	"Equate Flow"	
+		Fw = Outlet.Fw;
+	
+	"Equate Vapour Fraction"
+		v = Outlet.v;
+	
+	"Equate Temperature"
+		T = Outlet.T;
+end
+
+Model water_sinkR
+
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/waterR"; 
+	Brief 		= "Water Stream Sink";
+	Info = 
+"== GENERAL ==
+	This model should be used for boundary streams when no additional
+	information about the stream is desired.
+";
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+
+in  Inlet 		as water_stream	(Brief = "Inlet Water Stream", PosX = 0.0, PosY = 0.5256, Symbol="_{in}", Protected = true);
+
+end
+
+
+Model water_sinkL
+
+ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/waterL"; 
+	Brief 		= "Water Stream Sink";
+	Info = 
+"== GENERAL ==
+	This model should be used for boundary streams when no additional
+	information about the stream is desired.
+";
+
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+VARIABLES
+
+in Inlet 		as water_stream	(Brief = "Inlet Water Stream", PosX = 1.0, PosY = 0.5256, Symbol="_{in}", Protected = true);
+	
+end
+
+
+
+
+FlowSheet teste
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#	
+	
+	DEVICES
+	SS101 as water_sourceR;
+	
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+	
+	SPECIFY
+	
+	SS101.Fw = 100 * 'kg/h';
+	SS101.T = 368.15 * 'K';
+	SS101.P = 80 * 'bar';
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+	
+	SET
+	SS101.ValidPhases = "Liquid-Only";
+	
+#*-------------------------------------------------------------------
+* Opcoes do Solver
+*--------------------------------------------------------------------*#	
+	
+	OPTIONS
+	Dynamic = false;
+
+end
+
+
+FlowSheet teste2
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#	
+	
+	DEVICES
+	SS101 as water_sourceL;
+	SS102 as water_sinkL;
+
+#*-------------------------------------------------------------------
+* Conexoes entre dispositivos
+*--------------------------------------------------------------------*#	
+	
+	CONNECTIONS
+	SS101.Outlet to SS102.Inlet;
+	
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+	
+	SPECIFY
+	
+	SS101.Fw = 100 * 'kg/h';
+	SS101.T = 368.15 * 'K';
+	SS101.P = 80 * 'bar';
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+	
+	SET
+	SS101.ValidPhases = "Liquid-Only";
+	#SS101.ValidPhases = "Vapour-Liquid";
+	
+#*-------------------------------------------------------------------
+* Opcoes do Solver
+*--------------------------------------------------------------------*#	
+	
+	OPTIONS
+	Dynamic = false;
+
+end
+

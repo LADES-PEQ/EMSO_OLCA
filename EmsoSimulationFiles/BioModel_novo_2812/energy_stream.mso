@@ -1,0 +1,233 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Petrobras
+*--------------------------------------------------------------------
+* Nome do arquivo: energy_stream.mso
+* Projeto: Modelo integrado de producao de etanol 1G/2G
+* Conteudo: corrente de energia 
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Versao 2.2
+* Data:    03/2016
+* Autores:   Anderson R. A. Lino e Gabriel C. Fonseca
+* 
+*--------------------------------------------------------------------
+*Descricao: modelo da corrente de energia que sera utilizado
+*na simulacao do processo 
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+*Notas: Foram feitos os flowsheets teste e teste2 para averiguar 
+*o modelo
+*--------------------------------------------------------------------*#
+
+using "streams";
+
+Model heat_stream
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "Heat Stream";
+	Color = "red";
+	Info = 
+"== GENERAL ==
+	This general stream should be used when heat is transfered.
+";
+	
+	VARIABLES
+	Q as power (Upper = 1e8, Lower = -1e8);
+end
+
+Model heat_sourceR
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/heatR";
+	Brief = "Heat Stream Source";
+	Info =
+"== GENERAL ==
+	Source of heat.
+";
+	VARIABLES
+out Outlet_q as heat_stream (Brief = "Outlet Heat Stream", PosX = 1.0, PosY = 0.5256);
+
+end
+
+Model heat_sourceL
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/heatL";
+	Brief = "Heat Stream Source";
+	Info =
+"== GENERAL ==
+	Source of heat.
+";
+	VARIABLES
+out Outlet_q as heat_stream (Brief = "Outlet Heat Stream", PosX = 0, PosY = 0.5256);
+
+end
+
+
+Model heat_sinkR
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/heatR";
+	Brief = "Heat Stream Sink";
+	Info =
+"== GENERAL ==
+	Sink of heat.
+";
+	VARIABLES
+in Inlet_q as heat_stream (Brief = "Inlet Heat Stream", PosX = 0.0, PosY = 0.5256);
+
+end
+
+Model heat_sinkL
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/heatL";
+	Brief = "Heat Stream Sink";
+	Info =
+"== GENERAL ==
+	Sink of heat.
+";
+	VARIABLES
+in Inlet_q as heat_stream (Brief = "Inlet Heat Stream", PosX = 1.0, PosY = 0.5256);
+
+end
+
+
+#work stream
+Model power_stream
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "Work Stream";
+	Color = "darkgreen";
+	Info = 
+"== GENERAL ==
+	This general stream should be used when work is transfered.
+";
+
+	VARIABLES
+	W as potency (Upper = 1e8, Lower = -1e-6);
+	
+end
+
+Model power_sourceR
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/workR";
+	Brief = "Work Stream Source";
+	Info =
+"== GENERAL ==
+	Source of work.
+";
+
+	VARIABLES
+out Outlet_p as power_stream (Brief = "Outlet Work Stream", PosX = 1.0, PosY = 0.5256);
+	
+end
+
+Model power_sourceL
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/workL";
+	Brief = "Work Stream Source";
+	Info =
+"== GENERAL ==
+	Source of work.
+";
+
+	VARIABLES
+out Outlet_p as power_stream (Brief = "Outlet Work Stream", PosX = 0, PosY = 0.5256);
+	
+end
+
+
+Model power_sinkR
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/workR";
+	Brief = "Work Stream Sink";
+	Info =
+"== GENERAL ==
+	Sink of work.
+";
+
+	VARIABLES
+in Inlet_p as power_stream (Brief = "Inlet Work Stream", PosX = 0.0, PosY = 0.5256);
+	
+end
+
+Model power_sinkL
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/workL";
+	Brief = "Work Stream Sink";
+	Info =
+"== GENERAL ==
+	Sink of work.
+";
+
+	VARIABLES
+in Inlet_p as power_stream (Brief = "Inlet Work Stream", PosX = 1.0, PosY = 0.5256);
+	
+end
+
+
+
+
+FlowSheet teste
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#	
+	
+	DEVICES
+	SS101 as heat_sourceR;
+	
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+	
+	SPECIFY
+	SS101.Outlet_q.Q = 10 * 'kW';
+	
+#*-------------------------------------------------------------------
+* Opcoes do Solver
+*--------------------------------------------------------------------*#	
+	
+	OPTIONS
+	Dynamic = false;
+
+end
+
+
+FlowSheet teste2
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#	
+	
+	DEVICES
+	SS101 as heat_sourceR;
+	SS102 as heat_sinkL;
+	
+	CONNECTIONS
+	SS101.Outlet_q to SS102.Inlet_q;
+	
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+	
+	SPECIFY
+	SS101.Outlet_q.Q = 10 * 'kW';
+	
+#*-------------------------------------------------------------------
+* Opcoes do Solver
+*--------------------------------------------------------------------*#	
+	
+	OPTIONS
+	Dynamic = false;
+
+end
+

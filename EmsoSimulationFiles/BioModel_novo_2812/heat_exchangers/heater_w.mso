@@ -1,0 +1,989 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Petrobras
+*--------------------------------------------------------------------
+* Nome do arquivo: heater_w.mso
+* Projeto: Modelo integrado de producao de etanol 1G/2G
+* Conteudo: trocador de calor 
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Versao 2.2
+* Data:    03/2016
+* Autores:   Anderson R. A. Lino e Gabriel C. Fonseca
+* 
+*--------------------------------------------------------------------
+*Descricao: modelo simplificado do trocador de calor para agua  
+*que sera empregado na biorrefinaria
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+*Hipoteses assumidas: 1 - operacao em estado estacionario
+*                     2 - sem perdas de calor para o ambiente
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+*Notas: Foi feito o flowsheet teste para averiguar o modelo
+*--------------------------------------------------------------------*#
+
+using "..//water_stream";
+using "..//energy_stream";
+
+Model heatex_wL 
+
+	ATTRIBUTES
+	Pallete 	= false;
+	Icon 		= "icon/heater_WD";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+* Model of a simplified heat exchanger;
+* The model performes mass and energy balances only.
+	
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm 		as Plugin 	(Brief = "IAPWS 97 properties of water",Type = "water");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+VARIABLES
+
+in  Inlet		as water_stream 	(Brief="Inlet Stream", PosX=1.0, PosY=0.5, Protected = false, Symbol="_{in}");
+out Outlet		as water_stream_eq  (Brief="Outlet Stream", PosX=0.0, PosY=0.5, Protected = false, Symbol="_{out}");
+	Q	   		as power			(Brief="Heat Duty", Default=0, Lower=-1e10, Upper=1e10);
+	
+	Pdrop 		as press_delta		(Brief="Pressure Drop",Default=0.01, Lower=0,DisplayUnit='kPa' , Symbol ="\Delta P");
+	lmtd		as temp_delta		(Brief = "Normalized Mean Log", Lower = 1e-6, Symbol = "LMTD");
+	U	 		as heat_trans_coeff (Brief = "Overall Heat Transfer Coefficient", Default=0.69445, Lower=1e-6, Upper=1e10);
+	A 			as area				(Brief = "Exchange Surface Area", Lower = 1e-6);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	
+	"Energy Balance"
+	Q = Inlet.Fw*(Outlet.H - Inlet.H);
+
+	"Mass Balance"
+	Inlet.Fw  = Outlet.Fw;
+		
+	"Pressure Drop"
+	Outlet.P = Inlet.P - Pdrop;
+	
+end
+
+Model heater_wLD as heatex_wL
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WD";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Outlet stream temperature;
+* Overall Heat Transfer Coefficient;
+* Exchange Surface Area;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	
+	VARIABLES
+in	Inlet_q	as heat_stream	(Brief = "Inlet Heat Stream", PosX=0.5, PosY=1.0, Symbol="_{in}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Inlet_q.Q = Q;
+	
+	"General equation of heat exchange"
+	Inlet_q.Q = U * A * lmtd;
+	
+end
+
+Model cooler_wLD as heatex_wL
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WD";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Vapourization fraction at the outlet of the cooler;
+* Normalized Mean Log (lmtd);
+* Overall Heat Transfer Coefficient;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	VARIABLES
+out	Outlet_q	as heat_stream	(Brief = "Outlet Heat Stream", PosX=0.5, PosY=1.0, Symbol="_{out}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Outlet_q.Q = -Q;
+	
+	"General equation of heat exchange"
+	Outlet_q.Q = U * A * lmtd;
+	
+end
+
+Model heater_wLU as heatex_wL
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WU";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Outlet stream temperature;
+* Overall Heat Transfer Coefficient;
+* Exchange Surface Area;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	VARIABLES
+in	Inlet_q	as heat_stream	(Brief = "Inlet Heat Stream", PosX=0.5, PosY=0.0, Symbol="_{in}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Inlet_q.Q = Q;
+	
+	"General equation of heat exchange"
+	Inlet_q.Q = U * A * lmtd;
+	
+end
+
+Model cooler_wLU as heatex_wL
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WU";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Vapourization fraction at the outlet of the cooler;
+* Normalized Mean Log (lmtd);
+* Overall Heat Transfer Coefficient;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	
+	VARIABLES
+out	Outlet_q	as heat_stream	(Brief = "Outlet Heat Stream", PosX=0.5, PosY=0.0, Symbol="_{out}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Outlet_q.Q = -Q;
+	
+	"General equation of heat exchange"
+	Outlet_q.Q = U * A * lmtd;
+	
+end
+
+Model heatex_wR 
+
+	ATTRIBUTES
+	Pallete 	= false;
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+* Model of a simplified heat exchanger;
+* The model performes mass and energy balances only.
+	
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+";	
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm 		as Plugin 		(Brief = "IAPWS 97 properties of water",Type = "water");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+VARIABLES
+
+in  Inlet		as water_stream 		(Brief="Inlet Stream", PosX=0.0, PosY=0.5, Protected = false, Symbol="_{in}");
+out Outlet		as water_stream_eq  	(Brief="Outlet Stream", PosX=1.0, PosY=0.5, Protected = false, Symbol="_{out}");
+	Q	   		as power				(Brief="Heat Duty", Default=0, Lower=-1e10, Upper=1e10);
+	
+	Pdrop 		as press_delta		(Brief="Pressure Drop",Default=0.01, Lower=0,DisplayUnit='kPa' , Symbol ="\Delta P");
+	lmtd		as temp_delta		(Brief = "Normalized Mean Log", Lower = 1e-6, Symbol = "LMTD");
+	U	 		as heat_trans_coeff (Brief = "Overall Heat Transfer Coefficient", Default=0.69445, Lower=1e-6, Upper=1e10);
+	A 			as area				(Brief = "Exchange Surface Area", Lower = 1e-6);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	
+	"Energy Balance"
+	Q = Inlet.Fw*(Outlet.H - Inlet.H);
+
+	"Mass Balance"
+	Inlet.Fw  = Outlet.Fw;
+	
+	"Pressure Drop"
+	Outlet.P = Inlet.P - Pdrop;
+	
+end
+
+Model heater_wRD as heatex_wR
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WD";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Outlet stream temperature;
+* Overall Heat Transfer Coefficient;
+* Exchange Surface Area;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	VARIABLES
+in	Inlet_q	as heat_stream	(Brief = "Inlet Heat Stream", PosX=0.5, PosY=1.0, Symbol="_{in}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Inlet_q.Q = Q;
+	
+	"General equation of heat exchange"
+	Inlet_q.Q = U * A * lmtd;
+	
+end
+
+Model cooler_wRD as heatex_wR
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WD";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Vapourization fraction at the outlet of the cooler;
+* Normalized Mean Log (lmtd);
+* Overall Heat Transfer Coefficient;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+
+	VARIABLES
+out	Outlet_q	as heat_stream	(Brief = "Outlet Heat Stream", PosX=0.5, PosY=1.0, Symbol="_{out}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Outlet_q.Q = -Q;
+	
+	"General equation of heat exchange"
+	Outlet_q.Q = U * A * lmtd;
+	
+end
+
+Model heater_wRU as heatex_wR
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WU";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Outlet stream temperature;
+* Overall Heat Transfer Coefficient;
+* Exchange Surface Area;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	VARIABLES
+in	Inlet_q	as heat_stream	(Brief = "Inlet Heat Stream", PosX=0.5, PosY=0.0, Symbol="_{in}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Inlet_q.Q = Q;
+	
+	"General equation of heat exchange"
+	Inlet_q.Q = U * A * lmtd;
+	
+end
+
+Model cooler_wRU as heatex_wR
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WU";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Vapourization fraction at the outlet of the cooler;
+* Normalized Mean Log (lmtd);
+* Overall Heat Transfer Coefficient;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+
+	VARIABLES
+out	Outlet_q	as heat_stream	(Brief = "Outlet Heat Stream", PosX=0.5, PosY=0.0, Symbol="_{out}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Outlet_q.Q = -Q;
+	
+	"General equation of heat exchange"
+	Outlet_q.Q = U * A * lmtd;
+	
+end
+
+Model heatex_wU 
+
+	ATTRIBUTES
+	Pallete 	= false;
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+* Model of a simplified heat exchanger;
+* The model performes mass and energy balances only.
+	
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm 		as Plugin 		(Brief = "IAPWS 97 properties of water",Type = "water");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+VARIABLES
+
+in  Inlet		as water_stream 		(Brief="Inlet Stream", PosX=0.5, PosY=1.0, Protected = false, Symbol="_{in}");
+out Outlet		as water_stream_eq  	(Brief="Outlet Stream", PosX=0.5, PosY=0.0, Protected = false, Symbol="_{out}");
+	Q	   		as power				(Brief="Heat Duty", Default=0, Lower=-1e10, Upper=1e10);
+	
+	Pdrop 		as press_delta		(Brief="Pressure Drop",Default=0.01, Lower=0,DisplayUnit='kPa' , Symbol ="\Delta P");
+	lmtd		as temp_delta		(Brief = "Normalized Mean Log", Lower = 1e-6, Symbol = "LMTD");
+	U	 		as heat_trans_coeff (Brief = "Overall Heat Transfer Coefficient", Default=0.69445, Lower=1e-6, Upper=1e10);
+	A 			as area				(Brief = "Exchange Surface Area", Lower = 1e-6);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	
+	"Energy Balance"
+	Q = Inlet.Fw*(Outlet.H - Inlet.H);
+
+	"Mass Balance"
+	Inlet.Fw  = Outlet.Fw;
+	
+	"Pressure Drop"
+	Outlet.P = Inlet.P - Pdrop;
+
+end
+
+Model heater_wUR as heatex_wU
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WR";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Outlet stream temperature;
+* Overall Heat Transfer Coefficient;
+* Exchange Surface Area;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	VARIABLES
+in	Inlet_q	as heat_stream	(Brief = "Inlet Heat Stream", PosX=1.0, PosY=0.5, Symbol="_{in}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Inlet_q.Q = Q;
+	
+	"General equation of heat exchange"
+	Inlet_q.Q = U * A * lmtd;
+	
+end
+
+Model cooler_wUR as heatex_wU
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WR";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Vapourization fraction at the outlet of the cooler;
+* Normalized Mean Log (lmtd);
+* Overall Heat Transfer Coefficient;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+
+	VARIABLES
+out	Outlet_q	as heat_stream	(Brief = "Outlet Heat Stream", PosX=1.0, PosY=0.5, Symbol="_{out}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Outlet_q.Q = -Q;
+	
+	"General equation of heat exchange"
+	Outlet_q.Q = U * A * lmtd;
+	
+end
+
+Model heater_wUL as heatex_wU
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WL";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Outlet stream temperature;
+* Overall Heat Transfer Coefficient;
+* Exchange Surface Area;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	VARIABLES
+in	Inlet_q	as heat_stream	(Brief = "Inlet Heat Stream", PosX=0.0, PosY=0.5, Symbol="_{in}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Inlet_q.Q = Q;
+	
+	"General equation of heat exchange"
+	Inlet_q.Q = U * A * lmtd;
+	
+end
+
+Model cooler_wUL as heatex_wU
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WL";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Vapourization fraction at the outlet of the cooler;
+* Normalized Mean Log (lmtd);
+* Overall Heat Transfer Coefficient;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+
+	VARIABLES
+out	Outlet_q	as heat_stream	(Brief = "Outlet Heat Stream", PosX=0.0, PosY=0.5, Symbol="_{out}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Outlet_q.Q = -Q;
+	
+	"General equation of heat exchange"
+	Outlet_q.Q = U * A * lmtd;
+	
+end
+
+Model heatex_wD 
+
+	ATTRIBUTES
+	Pallete 	= false;
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+* Model of a simplified heat exchanger;
+* The model performes mass and energy balances only.
+	
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm 		as Plugin 			(Brief = "IAPWS 97 properties of water",Type = "water");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+VARIABLES
+
+in  Inlet		as water_stream 		(Brief="Inlet Stream", PosX=0.5, PosY=0.0, Protected = false, Symbol="_{in}");
+out Outlet		as water_stream_eq  	(Brief="Outlet Stream", PosX=0.5, PosY=1.0, Protected = false, Symbol="_{out}");
+	Q	   		as power				(Brief="Heat Duty", Default=0, Lower=-1e10, Upper=1e10);
+	
+	Pdrop 		as press_delta		(Brief="Pressure Drop",Default=0.01, Lower=0,DisplayUnit='kPa' , Symbol ="\Delta P");
+	lmtd		as temp_delta		(Brief = "Normalized Mean Log", Lower = 1e-6, Symbol = "LMTD");
+	U	 		as heat_trans_coeff (Brief = "Overall Heat Transfer Coefficient", Default=0.69445, Lower=1e-6, Upper=1e10);
+	A 			as area				(Brief = "Exchange Surface Area", Lower = 1e-6);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	
+	"Energy Balance"
+	Q = Inlet.Fw*(Outlet.H - Inlet.H);
+
+	"Mass Balance"
+	Inlet.Fw  = Outlet.Fw;
+	
+	"Pressure Drop"
+	Outlet.P = Inlet.P - Pdrop;
+	
+end
+
+Model heater_wDR as heatex_wD
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WR";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Outlet stream temperature;
+* Overall Heat Transfer Coefficient;
+* Exchange Surface Area;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	VARIABLES
+in	Inlet_q	as heat_stream	(Brief = "Inlet Heat Stream", PosX=1.0, PosY=0.5, Symbol="_{in}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Inlet_q.Q = Q;
+	
+	"General equation of heat exchange"
+	Inlet_q.Q = U * A * lmtd;
+	
+end
+
+Model cooler_wDR as heatex_wD
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WL";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Vapourization fraction at the outlet of the cooler;
+* Normalized Mean Log (lmtd);
+* Overall Heat Transfer Coefficient;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+
+	VARIABLES
+out	Outlet_q	as heat_stream	(Brief = "Outlet Heat Stream", PosX=1.0, PosY=0.5, Symbol="_{out}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Outlet_q.Q = -Q;
+	
+	"General equation of heat exchange"
+	Outlet_q.Q = U * A * lmtd;
+	
+end
+
+Model heater_wDL as heatex_wD
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WR";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== ASSUMPTIONS ==
+* Steady-State operation;
+* No heat loss to the surroundings.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Outlet stream temperature;
+* Overall Heat Transfer Coefficient;
+* Exchange Surface Area;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	VARIABLES
+in	Inlet_q	as heat_stream	(Brief = "Inlet Heat Stream", PosX=0.0, PosY=0.5, Symbol="_{in}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Inlet_q.Q = Q;
+	
+	"General equation of heat exchange"
+	Inlet_q.Q = U * A * lmtd;
+	
+end
+
+Model cooler_wDL as heatex_wD
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/heater_WR";
+	Brief		= "Model of a Heat Exchanger";
+	Info = 
+"== GENERAL ==
+*Model of a simplified heat exchanger;
+*The model performes mass and energy balances only.
+
+== SPECIFY ==
+* The inlet streams:
+  flow rate
+  temperature
+  pressure;
+* Vapourization fraction at the outlet of the cooler;
+* Normalized Mean Log (lmtd);
+* Overall Heat Transfer Coefficient;
+* Pressure drop.
+
+== SET ==
+* Phase of fluid entering and leaving the heater;.
+";
+
+	
+	VARIABLES
+out	Outlet_q	as heat_stream	(Brief = "Outlet Heat Stream", PosX=0.0, PosY=0.5, Symbol="_{out}");
+
+	EQUATIONS
+	"Equate Heat Stream"
+	Outlet_q.Q = -Q;
+	
+	"General equation of heat exchange"
+	Outlet_q.Q = U * A * lmtd;
+	
+end
+
+FlowSheet teste_cooler_w
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#	
+	
+	DEVICES
+	SCold as water_sourceR;
+	H as cooler_wLD;
+	
+#*-------------------------------------------------------------------
+* Especifica as conexoes entre os modelos
+*--------------------------------------------------------------------*#	
+	
+	CONNECTIONS
+	SCold.Outlet to H.Inlet;
+	
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+	
+	SPECIFY
+	SCold.Fw = 85341.7 * 'kg/h';
+	SCold.T = 388.7 * 'K';
+	SCold.P = 1.69596 * 'atm';
+	
+	H.Pdrop = 0 * 'atm';
+	H.Outlet.v = 0;
+	H.lmtd = 18 * 'K';
+	H.U = 0.69445 * 'kW/m^2/K';
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+	
+	SET
+	SCold.ValidPhases = "Vapour-Only";
+	H.Outlet.ValidPhases = "Vapour-Liquid";
+	
+#*-------------------------------------------------------------------
+* Opcoes de Solver
+*--------------------------------------------------------------------*#
+	
+	OPTIONS
+	Dynamic = false;
+
+end
+
+FlowSheet teste_heater_w
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#	
+	
+	DEVICES
+	SHot as water_sourceR;
+	H as heater_wLD;
+	SQ as heat_sourceR;
+	
+#*-------------------------------------------------------------------
+* Especifica as conexoes entre os modelos
+*--------------------------------------------------------------------*#	
+	
+	CONNECTIONS
+	SHot.Outlet to H.Inlet;
+	SQ.Outlet_q to H.Inlet_q;
+	
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+	
+	SPECIFY
+
+	SHot.Fw = 52200 * 'kg/h';
+	SHot.T = 340 * 'K';
+	SHot.P = 1 * 'atm';
+	H.Pdrop = 0 * 'atm';
+	H.Outlet.T = 350.0 * 'K';
+	H.U = 0.69445 * 'kW/m^2/K';
+	H.lmtd = 10 * 'K';
+
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+	
+	SET
+	SHot.ValidPhases = "Liquid-Only";
+	H.Outlet.ValidPhases = "Liquid-Only";
+	
+#*-------------------------------------------------------------------
+* Opcoes de Solver
+*--------------------------------------------------------------------*#
+	
+	OPTIONS
+	Dynamic = false;
+	GuessFile = "teste3.rlt";
+	
+end
+

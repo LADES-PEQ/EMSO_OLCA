@@ -1,0 +1,119 @@
+#*-------------------------------------------------------------------
+* Nome do arquivo: assumptions.mso
+* Projeto: producao de etanol 1G e 2G
+* Conteudo: Modelos com os indices dos componentes nos vetores usados
+*			nas simulacoes e tambem os valores gerais dos principais
+*			parametros de processo.
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Data:    03/2016
+* Autores:   Anderson R. A. Lino e Gabriel C. Fonseca
+* Versao: 2.1
+*--------------------------------------------------------------------
+*Descricao: simulacao da producao de E1G e E2G
+*--------------------------------------------------------------------*#
+
+using "types";
+
+Model ConstituentFluid
+	PARAMETERS
+	Water 				as Integer (Brief = "Water", Default = 1);
+	Sucrose 			as Integer (Brief = "Sucrose", Default = 2);
+	Glucose 			as Integer (Brief = "Glucose", Default = 3);
+	Xylose 				as Integer (Brief = "Xylose", Default = 4);
+	Ethanol 			as Integer (Brief = "Ethanol", Default = 5);
+	CO2 				as Integer (Brief = "Carbon Dioxide", Default = 6);
+	CO	 				as Integer (Brief = "Carbon Monoxide", Default = 7);
+	O2 					as Integer (Brief = "Oxygen", Default = 8);
+	N2 					as Integer (Brief = "Nitrogen", Default = 9);
+	H2 					as Integer (Brief = "Hydrogen", Default = 10);
+	CH4 				as Integer (Brief = "Methane", Default = 11);
+	Ammonia 			as Integer (Brief = "Ammonia", Default = 12);
+	Lignin 				as Integer (Brief = "Soluble Lignin", Default = 13);
+	Xylan 				as Integer (Brief = "Xylooligomers", Default = 14);
+	AceticAcid 			as Integer (Brief = "Acetic Acid", Default = 15);
+	Furfural 			as Integer (Brief = "Furfural", Default = 16);
+	HMF 				as Integer (Brief = "Hydroxymethylfurfural", Default = 17);
+	Glycerol 			as Integer (Brief = "Glycerol", Default = 18);
+	Solunkn				as Integer (Brief = "Unknown sugars", Default = 19);
+	MEG 				as Integer (Brief = "Ethylene Glycol", Default = 20);
+	H2SO4 				as Integer (Brief = "Sulfuric Acid", Default = 21);
+	PhosphoricAcid		as Integer (Brief = "Phosphoric Acid", Default = 22);
+	Impurities 			as Integer (Brief = "Impurities", Default = 23);
+	Cellobiose			as Integer (Brief = "Cellobiose", Default = 24);
+	AmmoniumHydroxide 	as Integer (Brief = "Ammonium Hydroxide", Default = 25);
+end
+
+Model ConstituentSolid
+	PARAMETERS
+	Cellulose			as Integer (Brief = "Cellulose", Default = 1);
+	Hemicell 			as Integer (Brief = "Hemicellulose", Default = 2);
+	Lignin 				as Integer (Brief = "Lignin", Default = 3);
+	Ash 				as Integer (Brief = "Ashes", Default = 4);
+	Enzyme 				as Integer (Brief = "Enzyme", Default = 5);
+	Yeast 				as Integer (Brief = "Yeast", Default = 6);
+	CaOH2 				as Integer (Brief = "Calcium Hydroxide", Default = 7);
+	Calciumphosphate	as Integer (Brief = "Calcium Phosphate", Default = 8);
+	Impurities 			as Integer (Brief = "Impurities", Default = 9);
+	
+end
+
+
+Model Boiler_Assumptions
+	PARAMETERS
+	
+	roomT 	as temperature 		(Brief = "Room Temperature", Default = 303.15);
+	U 		as heat_trans_coeff (Brief = "General Heat Transfer Coefficient for the Plant", Default = 0.69445);
+
+	SBComposition(25) 		as fraction 	(Brief = "Sugarcane Base Composition (Fluid Phase)");
+	SBCompositionSolid(9) 	as fraction 	(Brief = "Sugarcane Base Composition (Solid Phase)");
+	SBFlow 					as flow_mass 	(Brief = "Sugarcane Mass Flow", Default = 833333);
+	humidity_SB 			as fraction	(Brief = "Fraction of Water in the Baled Straw", Default = 0.10);	
+	
+	
+	SSFlow 					as flow_mass 	(Brief = "Sugarcane Mass Flow", Default = 833333);
+	StrawComposition(25) 			as fraction (Brief = "Straw Base Composition (Fluid Phase)");
+	StrawCompositionSolid(9) 		as fraction (Brief = "Straw Base Composition (Solid Phase)");
+	StrawComposition_baled(25) 		as fraction (Brief = "Base Composition for the Baled Straw (Fluid Phase)");
+	StrawCompositionSolid_baled(9) 	as fraction (Brief = "Base Composition for the Baled Straw (Solid Phase)");
+	humidity_straw 					as fraction	(Brief = "Fraction of Water in the OutletStraw", Default = 0.280135);
+	humidity_baled_straw 			as fraction	(Brief = "Fraction of Water in the Baled Straw", Default = 0.15);
+	
+	PumpEff 			as fraction (Brief = "Pump Efficiency", Default = 0.7);
+	TurbineEff 			as fraction (Brief = "Turbine Isoentropic Efficiency", Default = 0.85);
+	MechanicalEff 		as fraction (Brief = "Turbine Mechanical Efficiency", Default = 0.98);
+	
+	HydrEthDens 		as dens_mass (Brief = "Hydrous Ethanol Density @ 20 C", Default = 808.44);
+	AnhyEthDens 		as dens_mass (Brief = "Anhydrous Ethanol Density @ 20 C", Default = 789.34);
+	density_solution 	as dens_mass (Brief = "Solution Density", Default = 1000);
+	pi					as Real (Brief = "pi constant", Default = 3.141592654);
+	
+	SET
+	#Capacidade de moagem da planta 1G_2G
+	SBFlow = 0.153*1.10*500 * 't/h'; #153kg/ton cana
+
+	#Dados da cana-de-acucar 
+	SBComposition = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; 
+	SBCompositionSolid = [0.4219, 0.2760, 0.2156, 0.0284, 0, 0, 0, 0, 0.0563];
+	humidity_SB = 0.10;
+	
+	
+	SSFlow = 0.094*1.10*500 * 't/h'; #153kg/ton cana
+	#Dados da palha
+	StrawComposition = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+	StrawCompositionSolid = [0.4605, 0.2720, 0.2467, 0.0208, 0, 0, 0, 0, 0];
+	humidity_straw = 0.10; #Observacao--> os dados foram ponderados para representar as fracoes adequadamente
+	
+	#Dados da palha enfardada
+	StrawComposition_baled = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+	StrawCompositionSolid_baled = [0.4605, 0.2720, 0.2467, 0.0208, 0, 0, 0, 0, 0];
+	humidity_baled_straw = 0.15; #Observacao--> os dados foram ponderados para representar as fracoes adequadamente
+	
+	pi = 3.141592654;
+	
+end
+
+
+

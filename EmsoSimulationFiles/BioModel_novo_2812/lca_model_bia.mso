@@ -1,0 +1,566 @@
+#*-------------------------------------------------------------------
+* EMSO Model Library (EML) Copyright (C) 2004 - 2007 ALSOC.
+*
+* This LIBRARY is free software; you can distribute it and/or modify
+* it under the therms of the ALSOC FREE LICENSE as available at
+* http://www.enq.ufrgs.br/alsoc.
+*
+* EMSO Copyright (C) 2004 - 2007 ALSOC
+*--------------------------------------------------------------------
+* Sample file for for using EMSO_OLCA.
+*--------------------------------------------------------------------
+* Author: Simone de Carvalho Miyoshi
+* $Id: sample_calc_object.mso 248 2007-04-24 17:14:46Z bicca $
+*------------------------------------------------------------------*#
+
+using "types";
+
+
+Model LCABasic
+	PARAMETERS
+outer NoComps as Integer;
+outer obj as Plugin(Type="EMSO_OLCA");
+	
+	ni as Integer (Brief="Number of Inputs", Default=2);
+    ncf as Integer (Brief="Number of Characterization Factors", Default=3);
+	no as Integer (Brief= "Number of Outputs", Default=2);	
+	ne as Integer (Brief= "Number of ElementaryFlows (emissions+resources)", Default=2);	
+
+		
+	VARIABLES
+	cf_1(ni) as Real;
+	cf_2(ni) as Real;
+	cf_3(ni) as Real;
+	cf_4(ni) as Real;
+	cf_5(ni) as Real;
+	cf_6(ni) as Real;
+	cf_7(ni) as Real;
+	cf_8(ni) as Real;
+	cf_9(ni) as Real;
+	cf_10(ni) as Real;
+	cf_11(ni) as Real;	
+	
+	r1(no) as Real;
+	r2(no) as Real;
+	r3(no) as Real;
+	r4(no) as Real;
+	r5(no) as Real;
+	r6(no) as Real;
+	r7(no) as Real;
+	r8(no) as Real;
+	r9(no) as Real;
+	r10(no) as Real;
+	r11(no) as Real;
+	
+	ef1(ne) as Real;
+	ef2(ne) as Real;		
+	ef3(ne) as Real;
+	ef4(ne) as Real;
+	ef5(ne) as Real;
+	ef6(ne) as Real;
+	ef7(ne) as Real;
+	ef8(ne) as Real;
+	ef9(ne) as Real;
+	ef10(ne) as Real;
+	ef11(ne) as Real;
+
+	
+	
+	p1(ne+ni) as Real;
+	p2(ne+ni) as Real;		
+	p3(ne+ni) as Real;
+	p4(ne+ni) as Real;	
+	p5(ne+ni) as Real;
+	p6(ne+ni) as Real;	
+	p7(ne+ni) as Real;
+	p8(ne+ni) as Real;	
+	p9(ne+ni) as Real;
+	p10(ne+ni) as Real;	
+	p11(ne+ni) as Real;
+	
+	
+	input_values(ni) as Real (Default=1);
+	emission_values(ne) as Real(Default=1);
+	output_values(no) as Real (Default=1, Lower=1e-10);
+	
+	alloc_par(no) as Real (Default=1, Lower=1e-5);
+
+	
+	EQUATIONS
+
+	[cf_1, cf_2, cf_3, cf_4, cf_5,cf_6,cf_7,cf_8,cf_9,cf_10,cf_11] = obj.CharacterizationFactor();
+
+	
+	# keep input values and emissions values transformed from SI to dimensionless
+	[r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11] = obj.LcaCalc(input_values, emission_values, output_values, alloc_par);
+		
+	
+	[ef1, ef2, ef3, ef4, ef5, ef6, ef7, ef8, ef9, ef10, ef11] = obj.EmissionFactor();
+		
+	
+	[p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11] = obj.LcaPercentual(input_values, emission_values, output_values, alloc_par);
+	
+	
+	
+	
+end
+
+FlowSheet LCA_ethanol
+	
+	PARAMETERS
+	obj     as Plugin(Type= "EMSO_OLCA",
+	
+#	UnitFilePath=["C:/Users/gama_/Documents/EMSO_OLCA/EMSO_OLCA/EMSO_OLCA_units.csv"],
+#	DataBasePath=["C:/Users/gama_/OneDrive/COPPE/metodos/openLCA/ecoinvent_38_cutoff_3011"],
+#	InputFileName=["C:/Users/gama_/Documents/EMSO_OLCA/EMSO_OLCA/export_ethanol.csv"],
+
+
+	UnitFilePath=["C:\Users\beatr\OneDrive\Documentos\TCC\EMSO_OLCA_units.csv"],
+	DataBasePath=["C:\Users\beatr\OneDrive\Documentos\TCC\ecoinvent_38_LCIA_methods_30112021"],
+	InputFileName=["C:\Users\beatr\OneDrive\Documentos\TCC\export_ethanol.csv"],
+
+	Inputs=["market for sodium hydroxide, without water, in 50% solution state | sodium hydroxide, without water, in 50% solution state | Cutoff, U - GLO",
+			"sugarcane production sugarcane from literaturedata - BR",
+			"market for phosphoric acid, industrial grade, without water, in 85% solution state | phosphoric acid, industrial grade, without water, in 85% solution state | Cutoff, U - GLO",
+			"market for quicklime, milled, packed | quicklime, milled, packed | Cutoff, U - RoW",
+			"market for hydrochloric acid, without water, in 30% solution state | hydrochloric acid, without water, in 30% solution state | Cutoff, U - RoW",
+			"market for sulfuric acid | sulfuric acid | Cutoff, U - RoW",
+			"market for ammonia, anhydrous, liquid | ammonia, anhydrous, liquid | Cutoff, U - RoW",
+			"market for fodder yeast | fodder yeast | Cutoff, U - GLO",
+			"market for ethylene glycol | ethylene glycol | Cutoff, U - GLO",
+			"market for enzymes | enzymes | Cutoff, U - GLO",
+			"market for chemical, inorganic | chemical, inorganic | Cutoff, U - GLO",
+			"market for tap water | tap water | Cutoff, U - BR"],
+	OutputName=["ethanol, without water, in 95% solution state, from fermentation",
+				"wNET"],
+	OutputUnit=["kg", "MJ"],
+	#OutputUnit=["kg"],
+
+	ElementaryFlows=["NMVOC, non-methane volatile organic compounds, unspecified origin",
+				"Carbon monoxide",
+				"Nitrogen oxides",
+				"Particulates, < 2.5 um",
+				"Particulates, < 10um",
+				"Sulfur oxides",
+				"Black Carbon",
+				"Organic Carbon",
+				"Methane",
+				"Dinitrogen monoxide",
+				"Carbon dioxide, biogenic"],
+	
+	ElementaryFlowPath1=["Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air"],
+
+    ElementaryFlowPath2=["low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density"],
+	MethodName= ["CML-IA baseline"],
+#	Characterization_Factor =["Abiotic depletion","Global warming (GWP100a)","Human toxicity",	"Terrestrial ecotoxicity"],
+#*	Characterization_Factor =["Marine aquatic ecotoxicity",
+							  "Photochemical oxidation",
+							  "Abiotic depletion (fossil fuels)",
+							  "Global warming (GWP100a)"],	
+*#	MethodologyType=["attributional"],
+    AllocationType=["energy"]	,
+	AllocationUnits =["MJ/kg", " "],	
+	Characterization_Factor =[
+	"Global warming (GWP100a)",
+	"Photochemical oxidation",
+	"Human toxicity",
+	"Abiotic depletion",
+	"Eutrophication",
+	"Abiotic depletion (fossil fuels)",
+	"Marine aquatic ecotoxicity",
+	"Ozone layer depletion (ODP)", 
+	"Terrestrial ecotoxicity",
+	"Acidification",	
+	"Fresh water aquatic ecotox."]
+	);	
+	
+	NoComps as Integer(Default = 5);
+
+	DEVICES
+	lca1	as LCABasic;
+	
+	SET
+	lca1.ni=12;
+	lca1.ncf=11;
+	lca1.no=2;
+	lca1.ne=11;
+	
+
+	PARAMETERS
+	
+	LHV_straw as Real (Unit= 'Btu/ton', Default=13454049);
+	
+	LHV_bagasse as Real (Unit= 'Btu/ton', Default=12381771);
+	
+	VARIABLES
+	
+	VOC_Biomass_Greet as Real ( Unit='g/Btu');
+	CO_Biomass_Greet as Real ( Unit='g/Btu');
+	NO_Biomass_Greet as Real ( Unit='g/Btu');
+	PM25_Biomass_Greet as Real ( Unit='g/Btu');
+	PM10_Biomass_Greet as Real ( Unit='g/Btu');
+	SO_Biomass_Greet as Real ( Unit='g/Btu');
+	BC_Biomass_Greet as Real ( Unit='g/Btu');
+	OC_Biomass_Greet as Real ( Unit='g/Btu');
+	CH4_Biomass_Greet as Real ( Unit='g/Btu');
+	N2O_Biomass_Greet as Real ( Unit='g/Btu');
+	CO2_Biomass_Greet as Real ( Unit='g/Btu');
+
+	
+	umid_bagaco as Real (Default=0.5);
+	
+	umid_palha as Real (Default=0.5);
+	
+	umid_2G as Real (Default=0.5);
+	
+	
+	VOC_Biomass_straw as Real (Unit= 'kg/ton');
+	VOC_Biomass_bagasse as Real (Unit= 'kg/ton');
+	VOC_total	as Real  (Unit= 'kg');
+	
+	CO_Biomass_straw as Real (Unit= 'kg/ton');
+	CO_Biomass_bagasse as Real (Unit= 'kg/ton');
+	CO_total	as Real  (Unit= 'kg');
+	
+	NO_Biomass_straw as Real (Unit= 'kg/ton');
+	NO_Biomass_bagasse as Real (Unit= 'kg/ton');
+	NO_total	as Real  (Unit= 'kg');
+	
+	PM25_Biomass_straw as Real (Unit= 'kg/ton');
+	PM25_Biomass_bagasse as Real (Unit= 'kg/ton');
+	PM25_total	as Real  (Unit= 'kg');
+	
+	PM10_Biomass_straw as Real (Unit= 'kg/ton');
+	PM10_Biomass_bagasse as Real (Unit= 'kg/ton');
+	PM10_total	as Real  (Unit= 'kg');
+
+	SO_Biomass_straw as Real (Unit= 'kg/ton');
+	SO_Biomass_bagasse as Real (Unit= 'kg/ton');
+	SO_total	as Real  (Unit= 'kg');
+	
+	BC_Biomass_straw as Real (Unit= 'kg/ton');
+	BC_Biomass_bagasse as Real (Unit= 'kg/ton');
+	BC_total	as Real  (Unit= 'kg');
+	
+	OC_Biomass_straw as Real (Unit= 'kg/ton');
+	OC_Biomass_bagasse as Real (Unit= 'kg/ton');
+	OC_total	as Real  (Unit= 'kg');
+	
+	CH4_Biomass_straw as Real (Unit= 'kg/ton');
+	CH4_Biomass_bagasse as Real (Unit= 'kg/ton');
+	CH4_total	as Real  (Unit= 'kg');
+	
+	N2O_Biomass_straw as Real (Unit= 'kg/ton');
+	N2O_Biomass_bagasse as Real (Unit= 'kg/ton');
+	N2O_total	as Real  (Unit= 'kg');	
+	
+	CO2_Biomass_straw as Real (Unit= 'kg/ton');
+	CO2_Biomass_bagasse as Real (Unit= 'kg/ton');
+	CO2_total	as Real  (Unit= 'kg');	
+	
+	hidrox_sod 	as Real (Unit = 'kg/h');
+	cana as Real (Unit = 'kg/h');
+	acido_p as Real (Unit = 'kg/h');
+	cal as Real (Unit = 'kg/h');
+	acido_clor as Real (Unit = 'kg/h');
+	acido_flu as Real (Unit = 'kg/h');
+	amon as Real (Unit = 'kg/h');
+	levedura as Real (Unit = 'kg/h');
+	etileno as Real (Unit = 'kg/h');
+	enzima	as Real (Unit = 'kg/h');
+	floculante	as Real (Unit = 'kg/h');
+	agua as Real (Unit = 'kg/h');
+	
+	palha as Real (Unit= 'kg/h');
+	bagaco as Real (Unit= 'kg/h');
+	efluente_2G as Real(Unit= 'kg/h');
+	
+	emissao_CO2_biogenico as Real(Unit= 'kg/h');
+	
+	
+		SPECIFY
+	palha = 50.9806 *'ton/h';
+	bagaco = 40.1364 *'ton/h';
+	efluente_2G =32.379 *'ton/h';
+
+	hidrox_sod = 0*'kg/h';
+	cana = 833333*'kg/h';
+	acido_p = 1747.49*'kg/h';
+	cal = 880.833*'kg/h';
+	acido_clor = 0*'kg/h';
+	acido_flu = 211.598*'kg/h';
+	amon = 163.093*'kg/h';
+	levedura = 0*'kg/h';
+	etileno	= 167.709*'kg/h';
+	enzima = 600.272*'kg/h';
+	floculante = 3346.57*'kg/h';
+	agua = 1.4367e6*'kg/h';
+	
+	emissao_CO2_biogenico=207360*'kg/h';
+
+	
+	EQUATIONS
+
+	#parametros da AlocaÃÃo
+	lca1.alloc_par(1)=28.2609; #MJ/kg PCI ethanol
+	lca1.alloc_par(2)=1; #MJ tempo em s	
+	
+
+	VOC_Biomass_straw=VOC_Biomass_Greet*LHV_straw;
+	
+	VOC_Biomass_bagasse=VOC_Biomass_Greet*LHV_bagasse;
+	
+	VOC_total=(VOC_Biomass_straw*palha*(1+umid_palha)+VOC_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+	
+	
+	CO_Biomass_straw=CO_Biomass_Greet*LHV_straw;
+	
+	CO_Biomass_bagasse=CO_Biomass_Greet*LHV_bagasse;
+	
+	CO_total=(CO_Biomass_straw*palha*(1+umid_palha)+CO_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+
+	
+	NO_Biomass_straw=NO_Biomass_Greet*LHV_straw;
+	
+	NO_Biomass_bagasse=NO_Biomass_Greet*LHV_bagasse;
+	
+	NO_total=(NO_Biomass_straw*palha*(1+umid_palha)+NO_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+
+	
+	PM25_Biomass_straw=PM25_Biomass_Greet*LHV_straw;
+	
+	PM25_Biomass_bagasse=PM25_Biomass_Greet*LHV_bagasse;
+	
+	PM25_total=(PM25_Biomass_straw*palha*(1+umid_palha)+PM25_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+
+
+	PM10_Biomass_straw=PM10_Biomass_Greet*LHV_straw;
+	
+	PM10_Biomass_bagasse=PM10_Biomass_Greet*LHV_bagasse;
+	
+	PM10_total=(PM10_Biomass_straw*palha*(1+umid_palha)+PM10_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+	
+	
+	SO_Biomass_straw=SO_Biomass_Greet*LHV_straw;
+	
+	SO_Biomass_bagasse=SO_Biomass_Greet*LHV_bagasse;
+	
+	SO_total=(SO_Biomass_straw*palha*(1+umid_palha)+SO_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+
+	
+	BC_Biomass_straw=BC_Biomass_Greet*LHV_straw;
+	
+	BC_Biomass_bagasse=BC_Biomass_Greet*LHV_bagasse;
+	
+	BC_total=(BC_Biomass_straw*palha*(1+umid_palha)+BC_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+
+	
+	OC_Biomass_straw=OC_Biomass_Greet*LHV_straw;
+	
+	OC_Biomass_bagasse=OC_Biomass_Greet*LHV_bagasse;
+	
+	OC_total=(OC_Biomass_straw*palha*(1+umid_palha)+OC_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+
+	
+	CH4_Biomass_straw=CH4_Biomass_Greet*LHV_straw;
+	
+	CH4_Biomass_bagasse=CH4_Biomass_Greet*LHV_bagasse;
+	
+	CH4_total=(CH4_Biomass_straw*palha*(1+umid_palha)+CH4_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+
+	
+	N2O_Biomass_straw=N2O_Biomass_Greet*LHV_straw;
+	
+	N2O_Biomass_bagasse=N2O_Biomass_Greet*LHV_bagasse;
+	
+	N2O_total=(N2O_Biomass_straw*palha*(1+umid_palha)+N2O_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+
+	
+	CO2_Biomass_straw=CO2_Biomass_Greet*LHV_straw;
+	
+	CO2_Biomass_bagasse=CO2_Biomass_Greet*LHV_bagasse;
+	
+	CO2_total=(CO2_Biomass_straw*palha*(1+umid_palha)+CO2_Biomass_bagasse*(bagaco*(1+umid_bagaco)+efluente_2G*(1+umid_2G)))*1*'h';
+
+	
+	SPECIFY
+	
+	VOC_Biomass_Greet = 0.614987146e-6*'g/Btu';
+	CO_Biomass_Greet =9.751353425e-6*'g/Btu';
+	NO_Biomass_Greet =64.21348887e-6*'g/Btu';
+	PM25_Biomass_Greet =1.267106669e-6*'g/Btu';
+	PM10_Biomass_Greet =1.434700459e-6*'g/Btu';
+	SO_Biomass_Greet =58.92340478e-6*'g/Btu';
+	BC_Biomass_Greet =0.17486072e-6*'g/Btu';
+	OC_Biomass_Greet =0.413076774e-6*'g/Btu';
+	CH4_Biomass_Greet =9.865e-6*'g/Btu';
+	N2O_Biomass_Greet =6.107e-6*'g/Btu';
+	CO2_Biomass_Greet =44.36901532e-6*'g/Btu';
+
+
+	umid_bagaco = 0.5;
+	umid_palha = 0.5;
+	umid_2G = 0.5;
+	
+
+	SPECIFY
+	#conferir a ordem
+	#input_values(1) = (sin(1*time*'1/s'*'rad')+1)* 'kg';
+	lca1.input_values(1) =	hidrox_sod/(1*'kg/h');
+	lca1.input_values(2) =	cana/(1*'kg/h');
+	lca1.input_values(3) =	acido_p/(1*'kg/h');
+	lca1.input_values(4) =	cal/(1*'kg/h');
+	lca1.input_values(5) =	acido_clor/(1*'kg/h');
+	lca1.input_values(6) =	acido_flu/(1*'kg/h');
+	lca1.input_values(7) =	amon/(1*'kg/h');
+	lca1.input_values(8) =	levedura/(1*'kg/h');
+	lca1.input_values(9) =	etileno/(1*'kg/h');
+	lca1.input_values(10) =	enzima/(1*'kg/h');
+	lca1.input_values(11) =	floculante/(1*'kg/h');
+	lca1.input_values(12) =	agua/(1*'kg/h');
+	
+
+	lca1.emission_values(1)=	VOC_total/(1*'kg');
+	lca1.emission_values(2)=	CO_total/(1*'kg');
+	lca1.emission_values(3)=	NO_total/(1*'kg');
+	lca1.emission_values(4)=	PM25_total/(1*'kg');
+	lca1.emission_values(5)=	PM10_total/(1*'kg');
+	lca1.emission_values(6)=	SO_total/(1*'kg');
+	lca1.emission_values(7)=	BC_total/(1*'kg');
+	lca1.emission_values(8)=	OC_total/(1*'kg');
+	lca1.emission_values(9)=	CH4_total/(1*'kg');
+	lca1.emission_values(10)=	N2O_total/(1*'kg');
+	lca1.emission_values(11)=	emissao_CO2_biogenico/(1*'kg/h');
+	
+	lca1.output_values(1)= 75952.8; #in Kg Etanol na SaÃida
+	lca1.output_values(2)= 266097; #in MJ tempo em s (Mw*3600)
+
+
+	OPTIONS
+	Dynamic = false;
+end
+
+Model greet_estimation
+	
+
+VARIABLES	
+	
+	VOC_Biomass_Greet as Real ( Unit='kg/Btu');
+	CO_Biomass_Greet as Real ( Unit='kg/Btu');
+	NO_Biomass_Greet as Real ( Unit='kg/Btu');
+	PM25_Biomass_Greet as Real ( Unit='kg/Btu');
+	PM10_Biomass_Greet as Real ( Unit='kg/Btu');
+	SO_Biomass_Greet as Real ( Unit='kg/Btu');
+	BC_Biomass_Greet as Real ( Unit='kg/Btu');
+	OC_Biomass_Greet as Real ( Unit='kg/Btu');
+	CH4_Biomass_Greet as Real ( Unit='kg/Btu');
+	N2O_Biomass_Greet as Real ( Unit='kg/Btu');
+	
+	
+	LHV_bagasse as Real (Unit= 'Btu/ton', Default=12381771);
+	
+
+	VOC_Biomass_bagasse as Real (Unit= 'kg/ton');
+	VOC_total	as Real  (Unit= 'kg');
+	
+	CO_Biomass_bagasse as Real (Unit= 'kg/ton');
+	CO_total	as Real  (Unit= 'kg');
+	
+	NO_Biomass_bagasse as Real (Unit= 'kg/ton');
+	NO_total	as Real  (Unit= 'kg');
+	
+	PM25_Biomass_bagasse as Real (Unit= 'kg/ton');
+	PM25_total	as Real  (Unit= 'kg');
+	
+	PM10_Biomass_bagasse as Real (Unit= 'kg/ton');
+	PM10_total	as Real  (Unit= 'kg');
+
+	SO_Biomass_bagasse as Real (Unit= 'kg/ton');
+	SO_total	as Real  (Unit= 'kg');
+	
+	BC_Biomass_bagasse as Real (Unit= 'kg/ton');
+	BC_total	as Real  (Unit= 'kg');
+	
+	OC_Biomass_bagasse as Real (Unit= 'kg/ton');
+	OC_total	as Real  (Unit= 'kg');
+	
+	CH4_Biomass_bagasse as Real (Unit= 'kg/ton');
+	CH4_total	as Real  (Unit= 'kg');
+	
+	N2O_Biomass_bagasse as Real (Unit= 'kg/ton');
+	N2O_total	as Real  (Unit= 'kg');	
+	
+	bagasse	as Real (Unit = 'kg');
+	
+	EQUATIONS
+	
+	VOC_Biomass_bagasse=VOC_Biomass_Greet*LHV_bagasse;
+	VOC_total=(VOC_Biomass_bagasse*bagasse);
+	
+	CO_Biomass_bagasse=CO_Biomass_Greet*LHV_bagasse;
+	CO_total=(CO_Biomass_bagasse*bagasse);
+
+	NO_Biomass_bagasse=NO_Biomass_Greet*LHV_bagasse;
+	NO_total=(NO_Biomass_bagasse*bagasse);
+
+	PM25_Biomass_bagasse=PM25_Biomass_Greet*LHV_bagasse;
+	PM25_total=(PM25_Biomass_bagasse*bagasse);
+
+	PM10_Biomass_bagasse=PM10_Biomass_Greet*LHV_bagasse;
+	PM10_total=(PM10_Biomass_bagasse*bagasse);
+	
+	SO_Biomass_bagasse=SO_Biomass_Greet*LHV_bagasse;
+	SO_total=(SO_Biomass_bagasse*bagasse);
+
+	BC_Biomass_bagasse=BC_Biomass_Greet*LHV_bagasse;
+	BC_total=(BC_Biomass_bagasse*bagasse);
+	
+	OC_Biomass_bagasse=OC_Biomass_Greet*LHV_bagasse;
+	OC_total=(OC_Biomass_bagasse*bagasse);
+
+	CH4_Biomass_bagasse=CH4_Biomass_Greet*LHV_bagasse;
+	CH4_total=(CH4_Biomass_bagasse*bagasse);
+	
+	N2O_Biomass_bagasse=N2O_Biomass_Greet*LHV_bagasse;
+	N2O_total=(N2O_Biomass_bagasse*bagasse);
+
+	
+	SPECIFY
+	
+	VOC_Biomass_Greet = 0.000000000614987146*'kg/Btu';
+	CO_Biomass_Greet =0.000000009751353425*'kg/Btu';
+	NO_Biomass_Greet =0.00000006421348887*'kg/Btu';
+	PM25_Biomass_Greet =0.000000001267106669*'kg/Btu';
+	PM10_Biomass_Greet =0.000000001434700459*'kg/Btu';
+	SO_Biomass_Greet =0.00000005892340478*'kg/Btu';
+	BC_Biomass_Greet =0.00000000017486072*'kg/Btu';
+	OC_Biomass_Greet =0.000000000413076774*'kg/Btu';
+	CH4_Biomass_Greet =0.000000009865*'kg/Btu';
+	N2O_Biomass_Greet =0.000000006107*'kg/Btu';
+		
+	LHV_bagasse =12381771*'Btu/ton';
+	
+
+
+end
+

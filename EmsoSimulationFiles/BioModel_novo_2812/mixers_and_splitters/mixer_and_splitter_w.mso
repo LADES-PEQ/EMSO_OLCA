@@ -1,0 +1,919 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Petrobras
+*--------------------------------------------------------------------
+* Nome do arquivo: mixer_and_splitter_w.mso
+* Projeto: Modelo integrado de producao de etanol 1G/2G
+* Conteudo: misturador e splitter 
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Versao 2.2
+* Data:    03/2016
+* Autores:   Anderson R. A. Lino e Gabriel C. Fonseca
+* 
+*--------------------------------------------------------------------
+*Descricao: modelo do misturador e do splitter de correntes de agua 
+*que serao empregados na biorrefinaria
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+*Notas: Foi feito o flowsheet teste para averiguar o modelo
+*As siglas R, L, U, D sao indicativos da posisao da corrente de saida
+*sendo R=right, L=legth, U=up e D=down
+*--------------------------------------------------------------------*#
+
+using "..//water_stream";
+
+Model splitter_wU
+	
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/waterStreamD";
+	Brief 		= "Splitter With 2 Outlet Streams";
+	Info = 
+"== ASSUMPTIONS ==
+* Static;
+* Adiabatic.
+
+== SPEFICY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition
+* The split fraction (Outlet1).
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+in  Inlet 		as water_stream		(PosX=0.5, PosY=1.0, Symbol="_{in}", Protected = false);
+out Outlet1 	as water_stream		(PosX=0.08, PosY=0.0, Symbol="_{out1}", Protected = false);
+out Outlet2 	as water_stream		(PosX=0.92, PosY=0.0, Symbol="_{out2}", Protected = false);
+	frac 		as fraction 		(Brief = "fraction of molar outflow through the Outlet1",Symbol="\alpha");
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	"Outlet1 Mass Flow"
+	Outlet1.Fw = Inlet.Fw * frac;
+	
+	"Outlet2 Mass Flow"
+	Outlet2.Fw = Inlet.Fw * (1 - frac);
+	
+	"Outlet1 Temperature"
+	Outlet1.T = Inlet.T;
+	
+	"Outlet2 Temperature"
+	Outlet2.T = Inlet.T;
+	
+	"Outlet1 Pressure"
+	Outlet1.P = Inlet.P;
+	
+	"Outlet2 Pressure"
+	Outlet2.P = Inlet.P;
+	
+	"Outlet1 Mass Entropy"
+	Outlet1.S = Inlet.S;
+	
+	"Outlet2 Mass Entropy"
+	Outlet2.S = Inlet.S;
+	
+	"Outlet1 Mass Enthalpy"
+	Outlet1.H = Inlet.H;
+	
+	"Outlet2 Mass Enthalpy"
+	Outlet2.H = Inlet.H;
+	
+	"Outlet1 Vapour Fraction"
+	Outlet1.v = Inlet.v;
+	
+	"Outlet2 Vapour Fraction"
+	Outlet2.v = Inlet.v;
+	
+end
+
+Model splitter_wD
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/waterStreamU";
+	Brief 		= "Splitter with 2 outlet streams";
+	Info = 
+"== ASSUMPTIONS ==
+* Static;
+* Adiabatic.
+
+== SPEFICY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition
+* The split fraction (Outlet1).
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+in  Inlet 		as water_stream		(PosX=0.5, PosY=1.0, Symbol="_{in}", Protected = false);
+out Outlet1 	as water_stream		(PosX=0.08, PosY=0.0, Symbol="_{out1}", Protected = false);
+out Outlet2 	as water_stream		(PosX=0.92, PosY=0.0, Symbol="_{out2}", Protected = false);
+	frac 		as fraction 		(Brief = "fraction of molar outflow through the Outlet1",Symbol="\alpha");
+
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	"Outlet1 Mass Flow"
+	Outlet1.Fw = Inlet.Fw * frac;
+	
+	"Outlet2 Mass Flow"
+	Outlet2.Fw = Inlet.Fw * (1 - frac);
+	
+	"Outlet1 Temperature"
+	Outlet1.T = Inlet.T;
+	
+	"Outlet2 Temperature"
+	Outlet2.T = Inlet.T;
+	
+	"Outlet1 Pressure"
+	Outlet1.P = Inlet.P;
+	
+	"Outlet2 Pressure"
+	Outlet2.P = Inlet.P;
+	
+	"Outlet1 Mass Entropy"
+	Outlet1.S = Inlet.S;
+	
+	"Outlet2 Mass Entropy"
+	Outlet2.S = Inlet.S;
+	
+	"Outlet1 Mass Enthalpy"
+	Outlet1.H = Inlet.H;
+	
+	"Outlet2 Mass Enthalpy"
+	Outlet2.H = Inlet.H;
+	
+	"Outlet1 Vapour Fraction"
+	Outlet1.v = Inlet.v;
+	
+	"Outlet2 Vapour Fraction"
+	Outlet2.v = Inlet.v;
+	
+end
+
+Model splitter_wL
+	
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/waterStreamR";
+	Brief 		= "Splitter with 2 outlet streams";
+	Info = 
+"== ASSUMPTIONS ==
+* Static;
+* Adiabatic.
+
+== SPEFICY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition
+* The split fraction (Outlet1).
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+in  Inlet 		as water_stream		(PosX=0.5, PosY=1.0, Symbol="_{in}", Protected = false);
+out Outlet1 	as water_stream		(PosX=0.08, PosY=0.0, Symbol="_{out1}", Protected = false);
+out Outlet2 	as water_stream		(PosX=0.92, PosY=0.0, Symbol="_{out2}", Protected = false);
+	frac 		as fraction 		(Brief = "fraction of molar outflow through the Outlet1",Symbol="\alpha");
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	"Outlet1 Mass Flow"
+	Outlet1.Fw = Inlet.Fw * frac;
+	
+	"Outlet2 Mass Flow"
+	Outlet2.Fw = Inlet.Fw * (1 - frac);
+	
+	"Outlet1 Temperature"
+	Outlet1.T = Inlet.T;
+	
+	"Outlet2 Temperature"
+	Outlet2.T = Inlet.T;
+	
+	"Outlet1 Pressure"
+	Outlet1.P = Inlet.P;
+	
+	"Outlet2 Pressure"
+	Outlet2.P = Inlet.P;
+	
+	"Outlet1 Mass Entropy"
+	Outlet1.S = Inlet.S;
+	
+	"Outlet2 Mass Entropy"
+	Outlet2.S = Inlet.S;
+	
+	"Outlet1 Mass Enthalpy"
+	Outlet1.H = Inlet.H;
+	
+	"Outlet2 Mass Enthalpy"
+	Outlet2.H = Inlet.H;
+	
+	"Outlet1 Vapour Fraction"
+	Outlet1.v = Inlet.v;
+	
+	"Outlet2 Vapour Fraction"
+	Outlet2.v = Inlet.v;
+	
+end
+
+Model splitter_wR
+	
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/waterStreamL";
+	Brief 		= "Splitter with 2 outlet streams";
+	Info = 
+"== ASSUMPTIONS ==
+* Static;
+* Adiabatic.
+
+== SPEFICY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition
+* The split fraction (Outlet1).
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+in  Inlet 		as water_stream		(PosX=0.5, PosY=1.0, Symbol="_{in}", Protected = false);
+out Outlet1 	as water_stream		(PosX=0.08, PosY=0.0, Symbol="_{out1}", Protected = false);
+out Outlet2 	as water_stream		(PosX=0.92, PosY=0.0, Symbol="_{out2}", Protected = false);
+	frac 		as fraction 		(Brief = "fraction of molar outflow through the Outlet1",Symbol="\alpha");	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	"Outlet1 Mass Flow"
+	Outlet1.Fw = Inlet.Fw * frac;
+	
+	"Outlet2 Mass Flow"
+	Outlet2.Fw = Inlet.Fw * (1 - frac);
+	
+	"Outlet1 Temperature"
+	Outlet1.T = Inlet.T;
+	
+	"Outlet2 Temperature"
+	Outlet2.T = Inlet.T;
+	
+	"Outlet1 Pressure"
+	Outlet1.P = Inlet.P;
+	
+	"Outlet2 Pressure"
+	Outlet2.P = Inlet.P;
+	
+	"Outlet1 Mass Entropy"
+	Outlet1.S = Inlet.S;
+	
+	"Outlet2 Mass Entropy"
+	Outlet2.S = Inlet.S;
+	
+	"Outlet1 Mass Enthalpy"
+	Outlet1.H = Inlet.H;
+	
+	"Outlet2 Mass Enthalpy"
+	Outlet2.H = Inlet.H;
+	
+	"Outlet1 Vapour Fraction"
+	Outlet1.v = Inlet.v;
+	
+	"Outlet2 Vapour Fraction"
+	Outlet2.v = Inlet.v;
+	
+end
+
+Model mixer_wU
+	
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/waterStreamU";
+	Brief = "Mixer With 2 Inlet Streams";
+	Info = 
+"== ASSUMPTIONS ==
+* Static;
+* Adiabatic.
+
+== SPEFICY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition.
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+in 	Inlet1 		as water_stream 	(PosX=0.08, PosY=1.0, Symbol="_{in1}", Protected = false);
+in 	Inlet2 		as water_stream 	(PosX=0.92, PosY=1.0, Symbol="_{in2}", Protected = false);
+out Outlet 		as water_stream_eq 	(PosX=0.5, PosY=0.0, Symbol="_{out}", Protected = false);
+
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	"Global Mass Balance"
+	Inlet1.Fw + Inlet2.Fw = Outlet.Fw;
+	
+	"Energy Balance"
+	Inlet1.Fw * Inlet1.H + Inlet2.Fw * Inlet2.H = Outlet.Fw * Outlet.H;
+	
+	"Mechanical Equilibrium, array = [Inlet1.P, Inlet2.P]"
+	Outlet.P = min([Inlet1.P, Inlet2.P]);
+end
+
+Model mixer_wD
+	
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/waterStreamD";
+	Brief = "Mixer With 2 Inlet Streams";
+	Info = 
+"== ASSUMPTIONS ==
+* Static;
+* Adiabatic.
+
+== SPEFICY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition.
+
+== SET ==
+* Phase of the fluid entering the mixer;
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+in 	Inlet1 		as water_stream 	(PosX=0.08, PosY=0.0, Symbol="_{in1}", Protected = false);
+in 	Inlet2 		as water_stream 	(PosX=0.92, PosY=0.0, Symbol="_{in2}", Protected = false);
+out Outlet 		as water_stream_eq 	(PosX=0.5, PosY=1.0, Symbol="_{out}", Protected = false);
+
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	"Global Mass Balance"
+	Inlet1.Fw + Inlet2.Fw = Outlet.Fw;
+	
+	"Energy Balance"
+	Inlet1.Fw * Inlet1.H + Inlet2.Fw * Inlet2.H = Outlet.Fw * Outlet.H;
+	
+	"Mechanical Equilibrium, array = [Inlet1.P, Inlet2.P]"
+	Outlet.P = min([Inlet1.P, Inlet2.P]);
+end
+
+Model mixer_wL
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/waterStreamR";
+	Brief = "Mixer With 2 Inlet Streams";
+	Info = 
+"== ASSUMPTIONS ==
+* Static;
+* Adiabatic.
+
+== SPEFICY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition.
+
+== SET ==
+* Phase of the fluid entering the mixer;
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+in 	Inlet1 		as water_stream 	(PosX=0.0, PosY=0.08, Symbol="_{in1}", Protected = false);
+in 	Inlet2 		as water_stream 	(PosX=0.0, PosY=0.92, Symbol="_{in2}", Protected = false);
+out Outlet		as water_stream_eq 	(PosX=1.0, PosY=0.50, Symbol="_{out}", Protected = false);
+
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	"Global Mass Balance"
+	Inlet1.Fw + Inlet2.Fw = Outlet.Fw;
+	
+	"Energy Balance"
+	Inlet1.Fw * Inlet1.H + Inlet2.Fw * Inlet2.H = Outlet.Fw * Outlet.H;
+	
+	"Mechanical Equilibrium, array = [Inlet1.P, Inlet2.P]"
+	Outlet.P = min([Inlet1.P, Inlet2.P]);
+end
+
+Model mixer_wR
+	
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/waterStreamL";
+	Brief = "Mixer With 2 Inlet Streams";
+	Info = 
+"== ASSUMPTIONS ==
+* Static;
+* Adiabatic.
+
+== SPEFICY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition.
+
+== SET ==
+* Phase of the fluid entering the mixer;
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+in 	Inlet1 		as water_stream 	(PosX=1.0, PosY=0.08, Symbol="_{in1}", Protected = false);
+in 	Inlet2 		as water_stream 	(PosX=1.0, PosY=0.92, Symbol="_{in2}", Protected = false);
+out Outlet 		as water_stream_eq 	(PosX=0.0, PosY=0.50, Symbol="_{out}", Protected = false);
+
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	"Global Mass Balance"
+	Inlet1.Fw + Inlet2.Fw = Outlet.Fw;
+	
+	"Energy Balance"
+	Inlet1.Fw * Inlet1.H + Inlet2.Fw * Inlet2.H = Outlet.Fw * Outlet.H;
+	
+	"Mechanical Equilibrium, array = [Inlet1.P, Inlet2.P]"
+	Outlet.P = min([Inlet1.P, Inlet2.P]);
+end
+
+FlowSheet teste_mixer
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#
+	
+	DEVICES
+	S101 as water_sourceR;
+	S102 as water_sourceR;
+	mix as mixer_wR;
+	
+#*-------------------------------------------------------------------
+* Especifica as conexoes entre os modelos
+*--------------------------------------------------------------------*#
+	
+	CONNECTIONS
+	S102.Outlet to mix.Inlet2;
+	S101.Outlet to mix.Inlet1;
+		
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+
+	SPECIFY
+	S101.Fw = 185278 * 'kg/h';
+	S101.T = 318.185 * 'K';
+	S101.P = 1.65 * 'bar';
+	
+	#S102.Fw = 10000 * 'kg/h';
+	S102.T = 390.192 * 'K';
+	S102.P = 1.65 * 'bar';
+	
+	mix.Outlet.v = 0;
+	
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	S101.ValidPhases = "Liquid-Only";
+	S102.ValidPhases = "Liquid-Only";
+	
+#*-------------------------------------------------------------------
+* Opcoes de Solver e Condicoes Iniciais
+*--------------------------------------------------------------------*#	
+	
+	OPTIONS
+	Dynamic = false;
+	
+end
+
+Model mixer_wU_n
+	
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/waterStreamU";
+	Brief = "Mixer With n Inlet Streams";
+	Info = 
+"== ASSUMPTIONS ==
+* Static;
+* Adiabatic.
+
+== SPEFICY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition;
+* number of streams.
+
+== SET ==
+* Phase of the fluid entering the mixer;
+* Input stream number;
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	n as Integer (Default=2);
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+in 	Inlet(n) 	as water_stream 	(PosX=0.08, PosY=1.0, Symbol="_{in1}", Protected = false);
+out Outlet 		as water_stream_eq 	(PosX=0.5, PosY=0.0, Symbol="_{out}", Protected = false);
+
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	"Global Mass Balance"
+	sum(Inlet.Fw) = Outlet.Fw;
+	
+	"Energy Balance"
+	sum(Inlet.Fw * Inlet.H) = Outlet.Fw * Outlet.H;
+	
+	"Mechanical Equilibrium, array = [Inlet1.P, Inlet2.P]"
+	Outlet.P = min(Inlet.P);
+end
+
+Model mixer_wU_n2
+	
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/waterStreamU";
+	Brief = "Mixer With n Inlet Streams";
+	Info = 
+"== ASSUMPTIONS ==
+* Static;
+* Adiabatic.
+
+== SPEFICY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition;
+* number of streams.
+
+== SET ==
+* Phase of the fluid entering the mixer;
+* Input stream number;
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	n as Integer (Default=2);
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+in 	Inlet(n) 	as water_stream 	(PosX=0.08, PosY=1.0, Symbol="_{in1}", Protected = false);
+out Outlet 		as water_stream_eq2	(PosX=0.5, PosY=0.0, Symbol="_{out}", Protected = false);
+
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	"Global Mass Balance"
+	sum(Inlet.Fw) = Outlet.Fw;
+	
+	"Energy Balance"
+	sum(Inlet.Fw * Inlet.H) = Outlet.Fw * Outlet.H;
+	
+	"Mechanical Equilibrium, array = [Inlet1.P, Inlet2.P]"
+	Outlet.P = min(Inlet.P);
+end
+
+
+FlowSheet teste_mixer_n
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#
+	
+	DEVICES
+	S101 as water_sourceR;
+	S102 as water_sourceR;
+	S103 as water_sourceR;
+	mix as mixer_wU_n;
+	
+#*-------------------------------------------------------------------
+* Especifica as conexoes entre os modelos
+*--------------------------------------------------------------------*#
+	
+	CONNECTIONS
+	S101.Outlet to mix.Inlet(1);
+	S102.Outlet to mix.Inlet(2);
+	S103.Outlet to mix.Inlet(3);
+		
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+
+	SPECIFY
+	S101.Fw = 185278 * 'kg/h';
+	S101.T = 318.185 * 'K';
+	S101.P = 1.65 * 'bar';
+	
+	S102.Fw = 10000 * 'kg/h';
+	S102.T = 290.192 * 'K';
+	S102.P = 1.65 * 'bar';
+	
+	S103.Fw = 185278 * 'kg/h';
+	S103.T = 356.185 * 'K';
+	S103.P = 1.65 * 'bar';
+	
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	S101.ValidPhases = "Liquid-Only";
+	S102.ValidPhases = "Liquid-Only";
+	S103.ValidPhases = "Liquid-Only";
+	mix.Outlet.ValidPhases = "Liquid-Only";
+	mix.n=3;
+	
+#*-------------------------------------------------------------------
+* Opcoes de Solver e Condicoes Iniciais
+*--------------------------------------------------------------------*#	
+	
+	OPTIONS
+	Dynamic = false;
+	
+end
+
+
+FlowSheet teste_mixer_n2
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#
+	
+	DEVICES
+	S101 as water_sourceR;
+	S102 as water_sourceR;
+	S103 as water_sourceR;
+	mix as mixer_wU_n2;
+	
+#*-------------------------------------------------------------------
+* Especifica as conexoes entre os modelos
+*--------------------------------------------------------------------*#
+	
+	CONNECTIONS
+	S101.Outlet to mix.Inlet(1);
+	S102.Outlet to mix.Inlet(2);
+	S103.Outlet to mix.Inlet(3);
+		
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+
+	SPECIFY
+	S101.Fw = 185278 * 'kg/h';
+	S101.T = 318.185 * 'K';
+	S101.P = 1.65 * 'bar';
+	
+	S102.Fw = 10000 * 'kg/h';
+	S102.T = 290.192 * 'K';
+	S102.P = 1.65 * 'bar';
+	
+	S103.Fw = 18 * 'kg/h';
+	S103.T = 356.185 * 'K';
+	S103.P = 1.65 * 'bar';
+	
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	S101.ValidPhases = "Liquid-Only";
+	S102.ValidPhases = "Liquid-Only";
+	S103.ValidPhases = "Liquid-Only";
+	mix.Outlet.ValidPhases = "Liquid-Only";
+	mix.n=3;
+	
+#*-------------------------------------------------------------------
+* Opcoes de Solver e Condicoes Iniciais
+*--------------------------------------------------------------------*#	
+	
+	OPTIONS
+	Dynamic = false;
+	
+end
+
+Model Desupper
+
+#Desuper opera a 65 bar
+PARAMETERS
+propterm 						as Plugin 			(Brief = "IAPWS 97 properties of water",Type = "water");
+
+VARIABLES
+
+in Inlet as water_stream;
+out Outlet as water_stream;
+in Water as water_stream;
+
+
+EQUATIONS
+
+if Inlet.T-propterm.Tsat(Inlet.P)>1e-6*'K' then
+
+Outlet.T=propterm.Tsat(Outlet.P);
+
+[Outlet.S, Outlet.H] = propterm.propPTv(Outlet.P, Outlet.T);
+
+#Mass Balance
+Outlet.Fw=Water.Fw+Inlet.Fw;
+
+#Energy balance
+Outlet.Fw*Outlet.H=Inlet.Fw*Inlet.H +Water.Fw*Water.H;
+
+else
+
+Outlet.T=Inlet.T;
+
+Outlet.S=Inlet.S;
+
+Outlet.H=Inlet.H;
+
+Outlet.Fw=Inlet.Fw;
+
+Water.Fw=0*'kg/h';
+
+end
+
+Outlet.v=1;
+	
+end
+
+FlowSheet Desupper2
+	
+	
+PARAMETERS
+#propterm as Plugin (Brief = "IAPWS 97 properties of water",Type = "water");
+
+	
+VARIABLES
+
+D as Desupper;
+S as water_sourceL;
+W as water_sourceL;
+
+SET
+S.ValidPhases="Vapour-Only";
+W.ValidPhases="Liquid-Only";
+
+
+CONNECTIONS
+S.Outlet to D.Inlet;
+W.Outlet to D.Water;
+
+EQUATIONS
+
+S.P=44.3*'bar';
+S.Fw=1000*'kg/h';
+S.T=(400+273.15)*'K';
+
+
+#Entrada de Agua no Desuper
+W.P=10*'bar';
+W.T=(115+273.15)*'K';
+
+
+D.Outlet.P=41*'bar';
+
+
+end

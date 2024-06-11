@@ -1,0 +1,227 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Petrobras
+*--------------------------------------------------------------------
+* Nome do arquivo: pump_w.mso
+* Projeto: Modelo integrado de producao de etanol 1G/2G
+* Conteudo: bomba 
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Versao 2.1
+* Data:    03/2016
+* Autor:   Anderson R. A. Lino e Gabriel C. Fonseca
+* 
+*--------------------------------------------------------------------
+*Descricao: modelo da bomba para agua que sera empregado na biorrefinaria
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+*Notas: Foi feito o flowsheet teste para averiguar o modelo
+*As siglas R, L sao indicativos da posisao da corrente de saida
+*sendo R=right e L=legth.
+*--------------------------------------------------------------------*#
+
+using "..//water_stream";
+using "..//energy_stream";
+
+Model pump_wL
+	
+	ATTRIBUTES 
+	Pallete = true;
+	Icon 	= "icon/WpumpL";
+	Brief 	= " Model of a Pump for Water";
+	Info 		=
+"== GENERAL ==
+	General model for a water pump.
+	
+== ASSUMPTIONS ==
+* Steady State:
+  flow rate
+  temperature
+  pressure
+  stream composition;
+* Only Liquid;
+* Adiabatic.
+
+== SPECIFY ==
+* Inlet stream;
+* Outlet pressure or pressure increase;
+* Pump efficiency.
+	
+== SET ==
+* fluid density in the pump;
+* Specify the phase that comes out of the source.
+";
+	
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm 	as Plugin 		(Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	density		as dens_mass	(Brief = "density of Water", Default = 1000, Symbol = "\rho");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES	
+in 	Inlet 		as water_stream 		(Brief = "Inlet water", PosX=0.0, PosY=0.414, Symbol="_{in}", Protected = true);
+out Outlet 		as water_stream_vapfrac (Brief = "Outlet water", PosX=0.504, PosY=0.0, Symbol="_{out}");
+	PIn 		as press_delta			(Brief = "Pressure Increase",Default=0.01, Lower=0, DisplayUnit='kPa', Symbol ="\Delta P");
+	Pout		as pressure	 			(Brief = "Outlet Pressure", Default=1, Lower=0, DisplayUnit='atm', Symbol ="\Outlet P");
+	n 			as fraction 			(Brief = "Pump Efficiency", Symbol = "\eta");
+in	Inlet_p		as power_stream			(Brief = "Pump Potency", PosX=0.5, PosY=1.0, Symbol = "_{in}");
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	
+	"Mass Balance"
+	Inlet.Fw = Outlet.Fw;
+	
+	"Pressure Delta"
+	Outlet.P = Inlet.P + PIn;
+	
+	"Outlet Pressure"
+	Outlet.P = Pout;	
+	
+	"Energy Balance"
+	Inlet_p.W = Inlet.Fw * (Outlet.H - Inlet.H);
+	
+	"Water Mass Entropy and Enthalpy, array = [Outlet.S, Outlet.T]"
+	[Outlet.S, Outlet.T] = propterm.propPH(Outlet.P, Outlet.H);
+	
+	"Work"
+	Inlet_p.W * n * density = Inlet.Fw * PIn;
+	
+end
+
+Model pump_wR
+	
+	ATTRIBUTES 
+	
+	Pallete = true;
+	Icon = "icon/WpumpR";
+	Brief = " Model of a pump for water";
+	Info 		=
+"== GENERAL ==
+	General model for a water pump.
+	
+== ASSUMPTIONS ==
+* Steady State:
+  flow rate
+  temperature
+  pressure
+  stream composition;
+* Only Liquid;
+* Adiabatic.
+
+== SPECIFY ==
+* Inlet stream;
+* Outlet pressure or pressure increase;
+* Pump efficiency.
+	
+== SET ==
+* fluid density in the pump;
+* Specify the phase that comes out of the source.
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+	
+	PARAMETERS
+	propterm 	as Plugin 		(Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	density		as dens_mass	(Brief = "density of water", Default = 1000, Symbol = "\rho");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+	
+in 	Inlet 		as water_stream 		(Brief = "Inlet water", PosX=1.0, PosY=0.414, Symbol="_{in}", Protected = true);
+out Outlet 		as water_stream_vapfrac (Brief = "Outlet water", PosX=0.495, PosY=0.0, Symbol="_{out}");
+	PIn 		as press_delta			(Brief="Pressure Increase", Default=0.01, Lower=0, DisplayUnit='kPa', Symbol ="\Delta P");
+	Pout	as pressure	 		(Brief = "Outlet Pressure", Default=1, Lower=0, DisplayUnit='atm', Symbol ="\Outlet P");
+	n 			as fraction 			(Brief = "Pump Efficiency", Symbol = "\eta");
+in	Inlet_p		as power_stream			(Brief = "Pump Potency", PosX=0.5, PosY=1.0, Symbol = "_{in}");
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	
+	"Mass Balance"
+	Inlet.Fw = Outlet.Fw;
+	
+	"Pressure Delta"
+	Outlet.P = Inlet.P + PIn;
+	
+	"Outlet Pressure"
+	Outlet.P = Pout;	
+	
+	"Energy Balance"
+	Inlet_p.W = Inlet.Fw * (Outlet.H - Inlet.H);
+	
+	"Water Mass Entropy and Enthalpy, array = [Outlet.S, Outlet.T]"
+	[Outlet.S, Outlet.T] = propterm.propPH(Outlet.P, Outlet.H);
+	
+	"Work"
+	Inlet_p.W * n * density = Inlet.Fw * PIn;
+end
+
+FlowSheet teste_pump_w
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#
+	
+	DEVICES
+	S101 as water_sourceL;
+	P101 as pump_wL;
+	E101 as power_sourceR;
+	
+#*-------------------------------------------------------------------
+* Especifica as conexoes entre os modelos
+*--------------------------------------------------------------------*#
+	
+	CONNECTIONS
+	S101.Outlet to P101.Inlet;
+	E101.Outlet_p to P101.Inlet_p;
+	
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+
+	SPECIFY
+
+	S101.Fw = 100 * 'kg/h';
+	S101.T = 300 * 'K';
+	S101.P = 1 * 'atm';
+	
+	P101.PIn = 20 * 'atm';
+	P101.n = 0.5;
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	
+	P101.density = 1000 * 'kg/m^3';
+	S101.ValidPhases = "Liquid-Only";
+	
+#*-------------------------------------------------------------------
+* Condicoes iniciais e opcoes de Solver
+*--------------------------------------------------------------------*#
+	
+	OPTIONS
+	Dynamic = false;
+
+end

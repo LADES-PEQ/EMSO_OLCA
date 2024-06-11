@@ -1,0 +1,967 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Petrobras
+*--------------------------------------------------------------------
+* Nome do arquivo: flash_w.mso
+* Projeto: Modelo integrado de producao de etanol 1G/2G
+* Conteudo: tanque flash somente para a agua
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Versao 2.2
+* Data:    03/2016
+* Autores:   Anderson R. A. Lino e Felipe F. Furlan
+* 
+*--------------------------------------------------------------------
+*Descricao: modelo do tanque flash que sera empregado na biorrefinaria
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+*Hipoteses assumidas: 1 - mistura perfeita em ambas as fases
+*                     2 - equilibrio termodinamico
+*                     3 - modelo estatico
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+*Notas: Foi feito o flowsheet teste para averiguar o modelo. Dependendo
+* das especificacoes, o flash pode funcionar como um evaporador tambem
+*--------------------------------------------------------------------*#
+
+using "..//water_stream";
+using "..//energy_stream";
+
+Model flash_wR
+
+	ATTRIBUTES
+	Pallete 	= false;
+	Icon 		= "icon/flash"; 
+	Brief 		= "Flash with 2 Outlet Streams";
+	Info = 
+"== GENERAL == 
+	Model of a steady-state flash tank.
+	
+== ASSUMPTIONS ==
+* Both phases are perfectly mixed;
+* No solid is dragged with in the vapour outlet stream.
+	
+== SPECIFY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition;
+* The outlet pressure (OutletV.P);
+* The outlet temperature OR the heat supplied.
+
+== SET ==
+* Basic composition (mass or molar).
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+VARIABLES
+
+in 	Inlet 	as water_stream;
+out OutletV 	as water_stream;
+out OutletL 	as water_stream;
+	Q		as power;
+	v		as fraction;
+	P		as pressure;
+	T 		as temperature;
+	
+	Hl as enth_mass (Brief = "Saturated Water Enthalpy", Hidden = true);
+	Hv as enth_mass (Brief = "Saturated Steam Enthalpy", Hidden = true);
+	Sl as entr_mass (Brief = "Saturated Water Entropy", Hidden = true);
+	Sv as entr_mass (Brief = "Saturated Steam Entropy", Hidden = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+
+
+
+
+
+	"Global Mass Balance"
+	Inlet.Fw = OutletV.Fw + OutletL.Fw;
+	
+	"Energy Balance"
+	Inlet.Fw * Inlet.H + Q = OutletV.Fw * OutletV.H + OutletL.Fw * OutletL.H;
+	
+	
+	
+	
+	"Mechanical Equilibrium 1"
+	OutletV.P = OutletL.P;
+	
+	"Thermal Equilibrium 1"
+	OutletV.T = OutletL.T;
+	
+	"Vapour Fraction"
+	OutletV.Fw = v * Inlet.Fw;
+
+	"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+	[Sv, Hv] = propterm.propPTv(P, T);
+	
+	"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	[Sl, Hl] = propterm.propPTl(P, T);
+	
+	"Liquid Stream Vapour Fraction"
+	OutletL.v = 0;
+	
+	"Steam Stream Vapour Fraction"
+	OutletV.v = 1;
+	
+	"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+	[OutletV.S, OutletV.H] = propterm.propPTv(OutletV.P, OutletV.T);
+	
+	"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	[OutletL.S, OutletL.H] = propterm.propPTl(OutletL.P, OutletL.T);
+	
+	"Saturation Condition"
+	T = propterm.Tsat(P);
+	
+	"Outlet Pressure"
+	OutletV.P = P;
+	
+	"Outlet Temperature"
+	OutletL.T = T;
+
+end
+
+FlowSheet Flash_test3
+	
+PARAMETERS
+propterm 	 as Plugin (Brief = "IAPWS 97 properties of water",Type = "water");
+
+DEVICES
+
+S3 as water_sourceL;
+F101 as flash_wR3;
+
+CONNECTIONS
+S3.Outlet to F101.Inlet;
+
+
+SET
+S3.ValidPhases ="Vapour-Liquid";
+
+
+SPECIFY
+
+F101.P = 6.132 *'atm';
+F101.v = 0.5;
+#F101.Q = 0* 'kW';
+#F101.T=433*'K';
+
+S3.P=6.132 *'atm';
+S3.Fw=1098*'kg/h';
+S3.v=0.5;
+
+
+
+end
+
+
+Model flash_wR3
+	# ALTERACOES SIMONE MIYOSHI para melhorar a convergencia
+
+	ATTRIBUTES
+	Pallete 	= false;
+	Icon 		= "icon/flash"; 
+	Brief 		= "Flash with 2 Outlet Streams";
+	Info = 
+"== GENERAL == 
+	Model of a steady-state flash tank.
+	
+== ASSUMPTIONS ==
+* Both phases are perfectly mixed;
+* No solid is dragged with in the vapour outlet stream.
+	
+== SPECIFY ==
+* The inlet stream;
+* The outlet pressure (OutletV.P);
+* The outlet temperature OR the heat supplied.
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+VARIABLES
+
+in 	Inlet 	as water_stream;
+out OutletV 	as water_stream;
+out OutletL 	as water_stream;
+	Q		as power;
+	v		as fraction (Default=0.5);
+	P		as pressure;
+	T 		as temperature;
+	
+#Hl as enth_mass (Brief = "Saturated Water Enthalpy", Hidden = true);
+#Hv as enth_mass (Brief = "Saturated Steam Enthalpy", Hidden = true);
+#Sl as entr_mass (Brief = "Saturated Water Entropy", Hidden = true);
+#Sv as entr_mass (Brief = "Saturated Steam Entropy", Hidden = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	"Global Mass Balance"
+	Inlet.Fw = OutletV.Fw + OutletL.Fw;
+	
+	"Energy Balance"
+	Inlet.Fw * Inlet.H + Q = OutletV.Fw * OutletV.H + OutletL.Fw * OutletL.H;
+	
+	"Mechanical Equilibrium 1"
+	OutletV.P = OutletL.P;
+	
+	"Thermal Equilibrium 1"
+	OutletV.T = OutletL.T;
+	
+	"Vapour Fraction"
+	OutletV.Fw = v * Inlet.Fw;
+
+	"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+	#[Sv, Hv] = propterm.propPTv(P, T);
+	
+	[OutletV.S, OutletV.T] = propterm.propPH(P, OutletV.H);
+	
+	
+	"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	#[Sl, Hl] = propterm.propPTl(P, T);
+		
+	[OutletL.S, OutletL.H] = propterm.propPTl(P, T);
+	
+	"Liquid Stream Vapour Fraction"
+	OutletL.v = 0;
+	
+	"Steam Stream Vapour Fraction"
+	OutletV.v = 1;
+	
+	#"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+	#[OutletV.S, OutletV.H] = propterm.propPTv(OutletV.P, OutletV.T);
+	
+	#"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	#[OutletL.S, OutletL.H] = propterm.propPTl(OutletL.P, OutletL.T);
+	
+	"Saturation Condition"
+	T = propterm.Tsat(P);
+	
+	"Outlet Pressure"
+	OutletV.P = P;
+	
+	"Outlet Temperature"
+	OutletL.T = T;
+	
+	GUESS
+	OutletL.T=propterm.Tsat(P);
+
+end
+
+
+FlowSheet Flash_test4_v
+	
+PARAMETERS
+propterm 	 as Plugin (Brief = "IAPWS 97 properties of water",Type = "water");
+
+DEVICES
+
+S3 as water_sourceL2;
+F101 as flash_wR5;
+
+CONNECTIONS
+S3.Outlet to F101.Inlet;
+
+
+SET
+S3.ValidPhases ="Vapour-Only";
+F101.ValidPhases ="Vapour-Only";
+
+SPECIFY
+
+
+
+
+F101.P = 10 *'kPa';
+F101.Q=0 * 'kW';
+
+
+#F101.P = 6.132 *'atm';
+#F101.v = 0.5;
+#F101.Q = 0* 'kW';
+#F101.T=433*'K';
+
+#S3.P=6.132 *'atm';
+S3.Fw=1098*'kg/h';
+#S3.v=1;
+
+S3.P = 10 *'kPa';
+S3.T=(100+273.15) *'K';
+
+#GUESS
+#F101.v=1;
+
+end
+
+
+FlowSheet Flash_test4_lv
+	
+PARAMETERS
+propterm 	 as Plugin (Brief = "IAPWS 97 properties of water",Type = "water");
+
+DEVICES
+
+S3 as water_sourceL2;
+F101 as flash_wR5;
+
+CONNECTIONS
+S3.Outlet to F101.Inlet;
+
+
+SET
+S3.ValidPhases ="Vapour-Liquid";
+F101.ValidPhases ="Vapour-Liquid";
+
+SPECIFY
+
+
+
+F101.P = 10 *'kPa';
+F101.v = 0.5;
+#F101.Q = 0* 'kW';
+#F101.T=333*'K';
+
+
+S3.Fw=1098*'kg/h';
+S3.P = 10 *'kPa';
+#S3.T= (100+273.15)*'K';
+S3.v= 0;
+
+
+GUESS
+
+F101.v=0;
+
+
+end
+
+FlowSheet Flash_test4_l
+	
+PARAMETERS
+propterm 	 as Plugin (Brief = "IAPWS 97 properties of water",Type = "water");
+
+DEVICES
+
+S3 as water_sourceL2;
+F101 as flash_wR5;
+
+CONNECTIONS
+S3.Outlet to F101.Inlet;
+
+
+SET
+#S3.ValidPhases ="Vapour-Liquid";
+#S3.ValidPhases ="Vapour-Only";
+S3.ValidPhases ="Liquid-Only";
+F101.ValidPhases ="Liquid-Only";
+
+
+SPECIFY
+
+
+F101.P = 500 *'kPa';
+#F101.v = 0.5;
+F101.Q = 0* 'kW';
+#F101.T=300*'K';
+
+
+S3.Fw=1098*'kg/h';
+S3.P = 500 *'kPa';
+S3.T= (50+273.15)*'K';
+#S3.v= 1;
+
+
+#GUESS
+#F101.v = 0;
+
+
+end
+
+
+
+Model flash_wR4
+	# ALTERACOES SIMONE MIYOSHI para melhorar a convergencia
+
+	ATTRIBUTES
+	Pallete 	= false;
+	Icon 		= "icon/flash"; 
+	Brief 		= "Flash with 2 Outlet Streams";
+	Info = 
+"== GENERAL == 
+	Model of a steady-state flash tank.
+	
+== ASSUMPTIONS ==
+* Both phases are perfectly mixed;
+* No solid is dragged with in the vapour outlet stream.
+	
+== SPECIFY ==
+* The inlet stream;
+* The outlet pressure (OutletV.P);
+* The outlet temperature OR the heat supplied.
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+VARIABLES
+
+in 	Inlet 	as water_stream;
+out OutletV 	as water_stream;
+out OutletL 	as water_stream;
+	Q		as power;
+	v		as fraction (Default=0.5);
+	P		as pressure;
+	T 		as temperature;
+	
+	#H as enth_mass (Brief = "Saturated Water Enthalpy", Hidden = true);
+	
+#Hl as enth_mass (Brief = "Saturated Water Enthalpy", Hidden = true);
+#Hv as enth_mass (Brief = "Saturated Steam Enthalpy", Hidden = true);
+#Sl as entr_mass (Brief = "Saturated Water Entropy", Hidden = true);
+#Sv as entr_mass (Brief = "Saturated Steam Entropy", Hidden = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	"Global Mass Balance"
+	Inlet.Fw = OutletV.Fw + OutletL.Fw;
+	
+	"Energy Balance"
+	Inlet.Fw * Inlet.H + Q = OutletV.Fw * OutletV.H + OutletL.Fw * OutletL.H;
+	
+	"Mechanical Equilibrium 1"
+	OutletV.P = OutletL.P;
+	
+	"Thermal Equilibrium 1"
+	OutletV.T = OutletL.T;
+	
+	"Vapour Fraction"
+	OutletV.Fw = v * Inlet.Fw;
+
+	#"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+	#[Sv, Hv] = propterm.propPTv(P, T);
+	
+	
+	
+	#[OutletV.S, OutletV.H] = propterm.propPTv(P, T);
+	
+	
+	
+	#"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	#[Sl, Hl] = propterm.propPTl(P, T);
+	#[OutletL.S, OutletL.H] = propterm.propPTl(P, T);	
+	
+	
+	"Liquid Stream Vapour Fraction"
+	OutletL.v = 0;
+	
+	"Steam Stream Vapour Fraction"
+	OutletV.v = 1;
+	
+	#"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+	#[OutletV.S, OutletV.H] = propterm.propPTv(OutletV.P, OutletV.T);
+	
+	#"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	#[OutletL.S, OutletL.H] = propterm.propPTl(OutletL.P, OutletL.T);
+	
+	#if ( v >= 1) then
+	if T > propterm.Tsat(P) then
+		
+	#OutletV.Fw=Inlet.Fw;
+	OutletL.Fw=0;
+	
+	[OutletV.S, OutletV.T] = propterm.propPH(P, OutletV.H);
+	
+	[OutletL.S, OutletL.H] = propterm.propPTl(P, T);	
+	 #v=1;
+	
+	else
+
+		if (v<=0) then
+		#if T < propterm.Tsat(P) then
+	
+		#v=0;
+		
+		OutletV.Fw=0;
+		
+		[OutletL.S, OutletL.T] = propterm.propPH(P, OutletL.H);
+	
+		[OutletV.S, OutletV.H] = propterm.propPTv(P, T);	
+		
+		else
+		
+		"Saturation Condition"
+		T = propterm.Tsat(P);
+		
+		#[OutletV.S, OutletV.H] = propterm.propPTv(P, T);
+		
+		"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+		[OutletV.S, OutletV.H] = propterm.propPTv(OutletV.P, OutletV.T);
+		
+		[OutletL.S, OutletL.H] = propterm.propPTl(P, T);	
+		
+		end
+		
+
+	end
+	
+
+	
+	"Outlet Pressure"
+	OutletV.P = P;
+	
+	"Outlet Temperature"
+	OutletL.T = T;
+	
+	#GUESS
+	#OutletL.T=propterm.Tsat(P);
+
+end
+
+
+Model flash_wR5
+	# ALTERACOES SIMONE MIYOSHI para melhorar a convergencia
+
+	ATTRIBUTES
+	Pallete 	= false;
+	Icon 		= "icon/flash"; 
+	Brief 		= "Flash with 2 Outlet Streams";
+	Info = 
+"== GENERAL == 
+	Model of a steady-state flash tank.
+	
+== ASSUMPTIONS ==
+* Both phases are perfectly mixed;
+* No solid is dragged with in the vapour outlet stream.
+	
+== SPECIFY ==
+* The inlet stream;
+* The outlet pressure (OutletV.P);
+* The outlet temperature OR the heat supplied.
+";
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	ValidPhases as Switcher (Brief = "Saturation State of the Stream", Valid = ["Vapour-Only", "Liquid-Only", "Vapour-Liquid"], Default = "Vapour-Liquid");
+
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+VARIABLES
+
+in 	Inlet 	as water_stream;
+out OutletV 	as water_stream;
+out OutletL 	as water_stream;
+	Q		as power;
+	v		as fraction (Default=0.5);
+	P		as pressure;
+	T 		as temperature;
+	
+	#H as enth_mass (Brief = "Saturated Water Enthalpy", Hidden = true);
+	
+#Hl as enth_mass (Brief = "Saturated Water Enthalpy", Hidden = true);
+#Hv as enth_mass (Brief = "Saturated Steam Enthalpy", Hidden = true);
+#Sl as entr_mass (Brief = "Saturated Water Entropy", Hidden = true);
+#Sv as entr_mass (Brief = "Saturated Steam Entropy", Hidden = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	"Global Mass Balance"
+	Inlet.Fw = OutletV.Fw + OutletL.Fw;
+	
+	"Energy Balance"
+	Inlet.Fw * Inlet.H + Q = OutletV.Fw * OutletV.H + OutletL.Fw * OutletL.H;
+	
+	"Mechanical Equilibrium 1"
+	OutletV.P = OutletL.P;
+	
+	"Thermal Equilibrium 1"
+	OutletV.T = OutletL.T;
+	
+	"Vapour Fraction"
+	OutletV.Fw = v * Inlet.Fw;
+
+	#"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+	#[Sv, Hv] = propterm.propPTv(P, T);
+
+	#[OutletV.S, OutletV.H] = propterm.propPTv(P, T);
+	
+	#"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	#[Sl, Hl] = propterm.propPTl(P, T);
+	#[OutletL.S, OutletL.H] = propterm.propPTl(P, T);	
+	
+	"Liquid Stream Vapour Fraction"
+	OutletL.v = 0;
+	
+	"Steam Stream Vapour Fraction"
+	OutletV.v = 1;
+	
+	#"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+	#[OutletV.S, OutletV.H] = propterm.propPTv(OutletV.P, OutletV.T);
+	
+	#"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	#[OutletL.S, OutletL.H] = propterm.propPTl(OutletL.P, OutletL.T);
+	
+	
+	switch ValidPhases
+		
+	case "Vapour-Liquid":
+		#else
+		
+		"Saturation Condition"
+		T = propterm.Tsat(P);
+		
+		#[OutletV.S, OutletV.H] = propterm.propPTv(P, T);
+		
+		"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+		[OutletV.S, OutletV.H] = propterm.propPTv(OutletV.P, OutletV.T);
+		
+		[OutletL.S, OutletL.H] = propterm.propPTl(OutletL.P, OutletL.T);	
+		
+		
+	
+		when v < 0 switchto "Liquid-Only";
+		when v > 1 switchto "Vapour-Only";
+		#end	
+	
+	case "Vapour-Only":
+	#if ( v >= 1) then
+	#if T > propterm.Tsat(P) then
+		
+		#OutletV.Fw=Inlet.Fw;
+		OutletL.Fw=0 *'kg/h';
+	
+		[OutletV.S, OutletV.T] = propterm.propPH(OutletV.P, OutletV.H);
+	
+		[OutletL.S, OutletL.H] = propterm.propPTl(OutletL.P, OutletL.T);	
+	 #v=1;
+	
+	#else
+
+		#if (v<=0) then
+		#if T < propterm.Tsat(P) then
+		#v=0;
+		when v < 1 switchto "Vapour-Liquid";
+	
+		#when T < propterm.Tsat(P) switchto "Liquid-Only";	
+	
+	case "Liquid-Only":
+		
+		OutletV.Fw=0 * 'kg/h';
+		
+		[OutletL.S, OutletL.T] = propterm.propPH(OutletL.P, OutletL.H);
+	
+		[OutletV.S, OutletV.H] = propterm.propPTv(OutletV.P, OutletV.T);	
+		
+	
+		when v > 0 switchto "Vapour-Liquid";
+		
+		#when T > propterm.Tsat(P) switchto "Vapour-Only";
+	
+	
+
+	end
+	
+
+	
+	"Outlet Pressure"
+	OutletV.P = P;
+	
+	"Outlet Temperature"
+	OutletL.T = T;
+	
+	#GUESS
+	#OutletL.T=propterm.Tsat(P);
+
+end
+
+
+FlowSheet teste_flash_w
+	
+	DEVICES
+	W101 as water_sourceR;
+	F101 as flash_wR;
+	
+#*-------------------------------------------------------------------
+* Especifica as conexoes entre os modelos
+*--------------------------------------------------------------------*#
+	
+	CONNECTIONS
+	W101.Outlet to F101.Inlet;
+	
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+	
+	PARAMETERS
+	propterm as Plugin (Brief = "IAPWS 97 properties of water", Type = "water", Symbol = "{}");
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+	
+	SET
+	W101.ValidPhases = "Liquid-Only";
+	
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+	
+	SPECIFY
+	W101.Fw = 100 * 'kg/h';
+	W101.P = 5 * 'atm';
+	W101.T = 420 * 'K';
+	
+	F101.P = 4.5 * 'atm';
+	F101.Q = 1000 * 'W';
+
+#*-------------------------------------------------------------------
+* Condicoes iniciais e opcoes de Solver
+*--------------------------------------------------------------------*#
+	
+	OPTIONS
+	Dynamic = false;
+
+end
+
+
+FlowSheet Cooling_tower_basic
+
+DEVICES
+
+CT as cooling_tower_basic;
+
+#CT as cooling_tower;
+
+
+
+SPECIFY
+
+CT.P=1*'atm';
+
+CT.Tin=(40+273.15)*'K';
+
+CT.Tout=(30+273.15)*'K';
+
+CT.Fw=23923*'kg/h'; #vazao de agua de resfriamento
+
+SET
+
+CT.CC=5;
+CT.n=0.75;
+
+
+end
+
+
+FlowSheet Cooling_tower2
+
+DEVICES
+
+CT as cooling_tower;
+S3 as water_sourceR;
+
+#CT as cooling_tower;
+
+
+CONNECTIONS
+
+S3.Outlet to CT.MakeupInlet;
+
+SPECIFY
+
+CT.P=1*'atm';
+
+CT.Tin=(40+273.15)*'K';
+
+CT.Tout=(30+273.15)*'K';
+
+CT.Fw=23923*'kg/h'; #vazao de agua de resfriamento
+
+S3.P=6.132 *'atm';
+#S3.Fw=1098*'kg/h';
+S3.v=0;
+
+SET
+
+CT.CC=5;
+CT.n=0.75;
+
+
+end
+	
+
+
+Model cooling_tower_basic
+
+ATTRIBUTES
+	Pallete 	= false;
+	Icon 		= "icon/flash"; 
+	Brief 		= "Cooling tower Model";
+	Info = 
+"== GENERAL == 
+	Model of a cooling tower 
+	
+== ASSUMPTIONS ==
+* Water Inlet at 40oC and Water Outlet at 30oC;
+* 
+	
+== SPECIFY ==
+* The inlet stream:
+  flow rate
+  temperature
+  pressure
+  stream composition;
+* The outlet pressure (OutletV.P);
+* The outlet temperature OR the heat supplied.
+
+== SET ==
+* Basic composition (mass or molar).
+";
+
+
+
+PARAMETERS
+propterm 	 as Plugin (Brief = "IAPWS 97 properties of water",Type = "water");
+CC as Real (Brief = "Concentration Cycle", Default=5);
+n as Real(Brief = "Pump Efficiency", Default=0.75); # eficiencia da bomba
+
+VARIABLES
+	
+	
+	Hlout as enth_mass (Brief = "Saturated Water Enthalpy", Hidden = true);
+	Hlin as enth_mass (Brief = "Saturated Water Enthalpy", Hidden = true);
+	Slin as entr_mass (Brief = "Saturated Water Entropy", Hidden = true);
+	Slout as entr_mass (Brief = "Saturated Water Entropy", Hidden = true);
+
+	Sl_ as entr_mass (Brief = "Saturated Steam Entropy", Hidden = true);
+	Hl_ as enth_mass (Brief = "Saturated Steam Enthalpy", Hidden = true);
+	Sv as entr_mass (Brief = "Saturated Steam Entropy", Hidden = true);
+	Hv as enth_mass (Brief = "Saturated Steam Enthalpy", Hidden = true);
+
+	Tin  as temperature;
+	Tout  as temperature;
+
+	P  as pressure;
+	Fw as flow_mass	(Brief = "Stream Mass Flow");
+	Fw_tower as flow_mass	(Brief = "Stream Mass Flow");
+	Fw_wind as flow_mass	(Brief = "Stream Mass Flow");
+	
+	#Fw_Mu as flow_mass	(Brief = "Stream Mass Flow");
+	#Fw_BD as flow_mass	(Brief = "Stream Mass Flow");
+	
+	MakeupWater as flow_mass	(Brief = "Stream Mass Flow");
+	ColdBlowDown as flow_mass	(Brief = "Stream Mass Flow");
+	
+	Qtower as power;
+	
+	Pump_power as power;
+	
+	Pump_fan as power;
+	
+	
+	Eletricity_consumption as power;
+
+
+
+EQUATIONS
+
+	Qtower=Fw*(Hlin-Hlout);
+
+#"Steam Mass Entropy and Enthalpy, array = [Sv, Hv]"
+	#[Sv, Hv] = propterm.propPTv(P, T);
+	
+	"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	[Slin, Hlin] = propterm.propPTl(P, Tin);
+
+	"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	[Slout, Hlout] = propterm.propPTl(P, Tout);
+	
+	"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	[Sl_, Hl_] = propterm.propPTl(P, propterm.Tsat(P));
+
+	"Water Mass Entropy and Enthalpy, array = [Sl, Hl]"
+	[Sv, Hv] = propterm.propPTv(P, propterm.Tsat(P));
+	
+	Qtower=Fw_tower*(Hv-Hl_);
+	
+	Fw_wind=0.3/100*Fw_tower; #perdas
+
+	MakeupWater=Fw_tower+Fw_wind+ColdBlowDown;
+	
+	MakeupWater=CC*Fw_wind+CC*ColdBlowDown; #sais limite: 5x a concentracao inicial
+	
+	Pump_power=1/n*Fw/(1000*'kg/m^3')*266.7*'kPa';
+	
+	Pump_fan=Fw/8.337*0.5*4.402868*'ft^2/kg*h'*0.041*'hp/ft^2'/193.181*1.61;
+	
+	Eletricity_consumption=Pump_power+Pump_fan;
+	
+
+	
+	
+end
+
+Model cooling_tower as cooling_tower_basic
+	
+	VARIABLES
+	
+
+in  MakeupInlet 	as water_stream;
+	
+	EQUATIONS
+		
+	
+	MakeupInlet.Fw=MakeupWater;
+
+end
+

@@ -1,0 +1,1380 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Virtual 
+*--------------------------------------------------------------------
+* Nome do arquivo: var1_2_pinch_evap_econ.mso
+* Projeto: producao de etanol 1G e 2G 
+* Conteudo: Maxima producao de etanol. Soh queimando o
+*			bagaco necessario para atender a demanda do processo 
+* (baixa carga de solidos). Sem turbina de condensacao no CHP.
+*			Etanol anidro do C12/C6/C5
+* Integracao energetica atraves da analise pinch
+* 5 evaporadores na etapa de concentracao do caldo
+* 3 evaporadores na etapa de concentracao da xylose
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Cogeracao estruturada por Simone Miyoshi
+*
+* update 2.3.1 
+* data: 11/2022
+* teste e correcao da estrutura dos arquivos
+* Atualizada por: Simone Miyoshi	
+*
+*
+*
+*--------------------------------------------------------------------
+*Descricao: simulacao da producao de E1G e E2G
+*--------------------------------------------------------------------*
+
+*--------------------------------------------------------------------
+*Notas: Cada componente eh representado na simulacao por um Index number
+* Abaixo segue o Index number para cada componente
+-- fase fluida
+* 1 - agua
+* 2 - sacarose
+* 3 - glicose
+* 4 - xilose
+* 5 - etanol
+* 6 - CO2
+* 7 - CO
+* 8 - O2
+* 9 - N2
+* 10 - H2
+* 11 - CH4
+* 12 - amonia
+* 13 - lignina
+* 14 - xilana
+* 15 - acido acetico
+* 16 - furfural
+* 17 - hidroximetilfurfural (HMF)
+* 18 - glicerol 
+* 19 - Solunkn (acucares desconhecidos)
+* 20 - MEG (monoetilenoglicol)
+* 21 - H2SO4
+* 22 - acido fosforico
+* 23 - impurezas
+* 24 - celobiose
+* 25 - hidroxido de amonia
+
+-- fase solida
+* 1(26) - celulose
+* 2(27) - xilana (hemicelulose)
+* 3(28) - lignina
+* 4(29) - cinzas
+* 5(30) - enzima
+* 6(31) - levedura
+* 7(32) - hidroxido de calcio
+* 8(33) - fosfato de calcio
+* 9(34) - impurities
+*--------------------------------------------------------------------*#
+
+
+using "..//bib";
+using "..//lca_model_bia";
+using "..//mixers_and_splitters/mixer_and_splitter_w";
+using "..//heat_exchangers/heater_w";
+using "..//reactors/boiler";
+using "..//pressure_changers/turbine_w";
+using "..//separators/flash_w";
+using "..//pressure_changers/pump_w";
+
+FlowSheet cogeracao_baixa_basic
+#------------------------ Parte comum ---------------------------#
+	PARAMETERS
+	PP as Plugin	(Brief = "External Physical Properties", 
+		Type="PP",
+		Project = "../Flowsheets/v2_2/Fluid_v2_2.vrtherm" 
+	);
+	PPS as Plugin	(Brief = "External Physical Properties", 
+		Type="PP",
+		Project = "../Flowsheets/v2_2/Solid_v2_2.vrtherm"
+	);
+
+	NComp as Integer;
+	NCompS as Integer;
+	
+	ProPar as Boiler_Assumptions (Brief = "Model With All the Assumptions Made");
+	flu as ConstituentFluid	(Brief = "Indexes of All Compounds in the Fluid Phase", Symbol = " ", Protected = true);
+	sol as ConstituentSolid	(Brief = "Indexes of All Compounds in the Solid Phase", Symbol = " ", Protected = true);
+	
+	SET
+	#number of components in the liquid and solid phase 
+	NComp = PP.NumberOfComponents();
+	NCompS = PPS.NumberOfComponents();
+	
+	
+	DEVICES
+	
+	S101 as main_sourceR; #Fuel
+	S102 as water_sourceL2; #Water
+	#S102 as water_sourceL; #Water
+	S103 as main_sourceR; #air
+	E101 as heat_sourceR;
+	
+	B101 as boiler;
+	
+	#1st turbine - High Pressure (HP)
+	wT101 as turbine_w; #High pressure turbine
+	wSP101 as splitter_wL; # splitter to Medium pressure turbine
+		
+	#2nd turbine - Medium Pressure (MP)
+	wT102 as turbine_w; #Medium pressure turbine
+	wSP102 as splitter_wR; #splitter to Low Pressure turbine
+		
+	#3rd turbine - Low Pressure (LP)
+	wT103 as turbine_w; #Low pressure turbine
+	wSP103 as splitter_wR; #Splitter to Vacum turbine
+	
+	wSP_low as splitter_wR; #Splitter to deaerator
+	
+	#Dessuper (LP steam)
+	wDP103 as Desupper; # Low Pressure dessuper
+	S_DP103 as water_sourceR; #water to dessupper
+	
+	#Condenser (LP steam)
+	wE103 as cooler_wLD; #Low Pressure Condenser
+	
+	#Low Pressure Loss Splitter (LP steam)
+	wSPLoss_103 as splitter_wR;	
+	
+	#Manifold Condensed Water
+	
+	wMX_Manifold as mixer_wU_n2; #Manifold Condensed Water
+	
+	#Deaerator
+	wMX_Deaerator as mixer_wR; #Deaerador
+	
+	PS_Deaerator as power_sourceR; #work to Deaerator Pump
+	wPP_Deaerator as pump_wR; # Deaerator Pump
+	
+	#Water Makeup
+	S_Makeup as water_sourceL2; #Makeup water source
+	PS_Makeup as power_sourceR; #Work to Makeup Pump
+	wPP_Makeup as pump_wR; # Makeup Pump
+	wSP_Makeup as splitter_wR; #splitter of Makeup water
+	
+	#Splitters after the Deaerator
+	wSP104 as splitter_wR;
+	wSP107 as splitter_wR;
+	
+
+	CONNECTIONS
+
+
+	#Boiler
+	
+	S101.Outlet to B101.Fuel; #Boiler Fuel
+
+	#S102.Outlet to B101.Water;	#Boiler Water #RECYCLE 2 (UNCOMMENT IF NECESSARY) KEEP THE TEXT
+
+	S103.Outlet to B101.Air; #Boiler Air
+	
+	E101.Outlet_q to B101.Inlet_q; #Boiler Energy
+	
+	#HP Turbine
+	
+	B101.Steam to wT101.Inlet; # Boiler Steam to HP Turbine
+	
+	wT101.Outlet to wSP101.Inlet; #HP Turbine to splitter
+	
+	
+	#MP Turbine
+	
+	wSP101.Outlet2 to wT102.Inlet; #Spliter to MP Turbine
+	
+	wT102.Outlet to wSP102.Inlet;  #MP Turbine to para splitter
+	
+	
+	#LP Turbine
+	
+	wSP102.Outlet2 to wT103.Inlet; #splitter to LP Turbine 
+	
+	wT103.Outlet to wSP_low.Inlet; # LP Turbine to deaerator splitter
+	
+	wSP_low.Outlet1 to wSP103.Inlet; # deaerator splitter to splitter
+	
+	wSP103.Outlet1 to  wDP103.Inlet; # splitter to LP dessuper
+	
+	#S_DP103.Outlet to wDP103.Water; # alternative source to LP dessuper #Intern Recycle 1
+	
+	wSP104.Outlet2 to wDP103.Water; #sppliter 104 to  LP dessuper #Intern Recycle 1
+	
+	wDP103.Outlet to wE103.Inlet; # LP Steam Dessuper to LP Heat Exchanger 
+	
+	wE103.Outlet to wSPLoss_103.Inlet; #LP Heat Exchanger to LP Loss Splitter
+	
+	wSPLoss_103.Outlet1 to wMX_Manifold.Inlet(1); # LP Loss Splitter to Condensed Water Manifold
+	
+	#Makeup Water
+	S_Makeup.Outlet to wPP_Makeup.Inlet; #Makeup Water Source to Makeup Water Pump 
+	PS_Makeup.Outlet_p to wPP_Makeup.Inlet_p; #Power Source to Makeup Water Pump
+	
+	wPP_Makeup.Outlet to wSP_Makeup.Inlet; #Makeup Water Pump to Makeup Water Splitter 
+	
+	wSP_Makeup.Outlet1 to wMX_Manifold.Inlet(2); #Makeup Water Splitter to Condensed Water Manifold 
+	
+	#Deaerator
+	
+	wMX_Manifold.Outlet to wMX_Deaerator.Inlet1; #Condensed Water Manifold  to deaerador (Water Stream)
+	
+	wSP_low.Outlet2 to wMX_Deaerator.Inlet2; #Deaerator Spplitter to deaerator (Steam Stream)
+	
+	wMX_Deaerator.Outlet to wPP_Deaerator.Inlet; # Deaerador to deaerador pump
+	PS_Deaerator.Outlet_p to wPP_Deaerator.Inlet_p; #Power source to deaerator pump		
+	
+	wPP_Deaerator.Outlet to wSP104.Inlet;#Deaerator Pump to LP dessuper splitter
+	
+	wSP104.Outlet1 to wSP107.Inlet; # LP dessuper splitter to Boiler splitter 
+	
+	wSP107.Outlet1 to B101.Water; #RECYCLE 2 (COMMENT IF NECESSARY) KEEP THE TEXT
+	
+		
+	VARIABLES
+	
+	makeup as flow_mass; #Makeup Water
+	factor as Real (Lower=0.0, Upper=3.0, Default=1.0);
+		
+	SET
+	
+	#Sources
+
+	S101.ValidPhases = "Liquid-Only"; 	#Bagasse	
+	S101.CompositionBasis="Mass";		#Bagasse	
+	
+	S102.ValidPhases = "Liquid-Only"; # Source of Water (USED JUST TO HELP 1st Convergence)
+	
+	S103.ValidPhases = "Vapour-Only"; #Boiler Inlet Air
+	
+	S_DP103.ValidPhases = "Liquid-Only"; #Alternative Water Sources USED TO HELP 1st CONVERGENCE
+	
+	S_Makeup.ValidPhases = "Liquid-Only"; #Makeup Water Source
+	
+	#Boiler Reactions
+	B101.NReac = 3;
+	# Reaction 1:cellulose(C6H10O5) + 6O2 --> 5H2O + 6CO2
+	B101.stoic (:,1) = [5, 0, 0, 0, 0, 6, 0, -6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0];
+	# Reaction 2:hemicellulose(C5H8O4) + 5O2 --> 4H2O + 5CO2
+	B101.stoic (:,2) = [4, 0, 0, 0, 0, 5, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0];
+	# Reaction 3:lignina(C10H11.6O3.9) + 10.95O2 --> 5.8H2O + 10CO2
+	B101.stoic (:,3) = [5.8, 0, 0, 0, 0, 10, 0, -10.95, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0];
+	B101.h = [-2804.2, -2170.9, -5243] * 'kJ/mol';
+	B101.limit = [NComp+sol.Cellulose, NComp+sol.Hemicell, NComp+sol.Lignin];
+
+
+	#Condenser Low Pressure Steam
+	wE103.Outlet.ValidPhases = "Vapour-Liquid";
+		
+	#Deaerator pump
+	wPP_Deaerator.density = 1000 * 'kg/m^3';
+	
+	#Makeup Water Pump
+	wPP_Makeup.density = 1000 * 'kg/m^3';
+	
+	#Deaerator
+	wMX_Deaerator.Outlet.ValidPhases = "Vapour-Liquid";
+	
+	
+	SPECIFY
+	
+	factor=1;
+	
+	#BAGASSE
+	
+	S101.Fluid.Fw=(0.10)*S101.Solid.Fw;
+	
+	S101.T=319.575*'K';
+	S101.P=1*'atm';
+	#S101.Fluid.v=0;
+	
+	S101.CompositionOfSolid(1)=0.456955;# Cellulose
+	S101.CompositionOfSolid(2)=0.234368;#Hemicell
+	S101.CompositionOfSolid(3)=0.284937;# Lignin
+	S101.CompositionOfSolid(4)=0.00993874;#Ash
+	S101.CompositionOfSolid(5)=0;#Enzymes
+	S101.CompositionOfSolid(6)=0;#Yeast
+	S101.CompositionOfSolid(7)=0;#CaOH
+	S101.CompositionOfSolid(8)=0;#Calciumphosphate
+	S101.CompositionOfSolid(9)=0.013801;#Impurities
+	
+	S101.CompositionOfFluid(1)=1; #Water
+	S101.CompositionOfFluid(2:25)=0;
+	
+	
+	#Water source	
+	S102.T = 393.395 * 'K';
+	S102.P = 66.1239 * 'atm';
+	#S102.Fw = 522868*'kg/h';
+	
+	# AIR	
+	#S103.Fluid.F = 100 * 'kmol/h';
+	S103.Solid.F = 1e-6 * 'kmol/h';
+	S103.T = 303.15 * 'K';
+	S103.P = 1 * 'atm';
+	S103.CompositionOfSolid = [0.25, 0.20, 0.55, 0, 0, 0, 0, 0, 0];
+	S103.CompositionOfFluid = [0.013, 0, 0, 0, 0, 0, 0, 0.31, 0.677, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];#(massico-ar umido)
+	
+	#BOILER
+	B101.Efficiency_LHV = 0.872;
+	B101.Gas.T = (160 + 273.15) * 'K'; #170C
+	B101.T = (485 + 273.15) * 'K';
+	B101.Pdrop = 0 * 'bar';
+	B101.conv = [1, 1, 1];
+	B101.Ex_Air = 0.3;
+	B101.Inlet_q.Q = 0 * 'kW';
+
+	# High Pressure Turbine
+	wT101.Outlet.P = 17.4 * 'bar';
+	wT101.EF_T = ProPar.TurbineEff;
+	wT101.EF_ME = ProPar.MechanicalEff;
+	
+	#Splitter to  MP and LPTurbines	
+	wSP101.frac=0;
+	wSP102.frac=0;
+	
+	#MP Turbine
+	wT102.Outlet.P = 6 * 'bar';
+	wT102.EF_T = ProPar.TurbineEff;
+	wT102.EF_ME = ProPar.MechanicalEff;
+	
+	#LP Turbine
+	wT103.Outlet.P = 2.5 * 'bar';
+	wT103.EF_T = ProPar.TurbineEff;
+	wT103.EF_ME = ProPar.MechanicalEff;
+		
+	#Deaerator	
+	#wSP_low.frac=1;
+	wMX_Deaerator.Outlet.v=0;
+
+	#LP dessuper
+	#wDP103.Outlet.v = 1;
+	wDP103.Outlet.P= 2.5 * 'bar';
+	
+	#LP Steam Heat Exchanger (Condenser)
+	wE103.Outlet.P = 2.092 * 'bar';
+	#wE103.Outlet.P = 2.5 * 'bar';
+		
+	#wE103.Outlet.T = (102 + 273.15) * 'K'; 
+	wE103.U = ProPar.U;
+	wE103.lmtd = 10 * 'K';
+	#wE103.Q=-113.498*'MW'; # Hear to the plant
+	wE103.Q=-113.498*'MW'*factor; # Hear to the plant	
+	wE103.Outlet.v=0; #saturated liquid 
+		
+	#Low Pressure Loss Sppliter
+	wSPLoss_103.frac=0.96;
+	
+	#Alternative Water Source to Dessuper
+	S_DP103.T= 395.418 * 'K';
+	S_DP103.P= 66.1239 * 'atm';
+	#S_DP103.Fw= 1000* 'kg/h';
+	
+	# Deaerator Pump
+	wPP_Deaerator.Outlet.P = 66.1239 *'atm';
+	wPP_Deaerator.n = ProPar.PumpEff;
+	
+	#Makeup Water Source
+	S_Makeup.T=(273.15+25) * 'K';
+	S_Makeup.P= 1 * 'bar';
+	#S_Makeup.Fw= 100 * 'kg/h';
+	S_Makeup.Fw= makeup;
+	
+	#Water Makeup Pump	
+	wPP_Makeup.Outlet.P = 66.1239 *'atm';
+	wPP_Makeup.n = ProPar.PumpEff;
+
+
+	EQUATIONS
+		
+	#loops
+	
+	S_DP103.Outlet.Fw=wSP104.Outlet2.Fw; # It helps to implement loops
+	
+	S102.Outlet.Fw=wSP107.Outlet1.Fw; # It helps to implement loops
+	
+
+	OPTIONS
+	Dynamic = false;
+	
+	
+	NLASolver(
+		#File = "nlasolver",
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+	
+	
+
+end
+
+
+
+
+FlowSheet LCA_cogeracao_baixa as cogeracao_baixa_basic
+		
+	#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	#	
+	#EXTRA Configurations of the Simulation
+	
+	SET
+	
+	# Condensated Water Manifold
+	wMX_Manifold.n=2;
+	wMX_Manifold.Outlet.ValidPhases = "Liquid-Only";	
+		
+	SPECIFY
+
+	wSP103.frac=1; #Low Pressure Splitter fraction
+
+	wSP_Makeup.frac=1; # Makeup Water Splitter fraction
+		
+	wSP107.frac=1; # Spliter to the Boiler
+
+	#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	#	
+	#LCA Configuration
+
+	PARAMETERS
+
+	obj     as Plugin(Type= "EMSO_OLCA",
+	
+	UnitFilePath=["..//..//..//..//EMSO_OLCA/EMSO_OLCA_units.csv"],
+		
+	DataBasePath=["..//..//..//..//EMSO_OLCA/MetodosData"],
+	
+	InputFileName=["..//..//..//..//EMSO_OLCA/bagaco.csv"],
+
+	Inputs=["market for bagasse, from sugarcane | bagasse, from sugarcane | Cutoff, U - BR",
+			"market for tap water | tap water | Cutoff, U - BR"],
+	
+	OutputName=["vapor", "wNET"],
+	OutputUnit=["MJ", "MJ"],
+	
+	ElementaryFlows=["NMVOC, non-methane volatile organic compounds, unspecified origin",
+				     "Carbon monoxide",
+				     "Nitrogen oxides",
+					 "Particulates, < 2.5 um",
+					 "Particulates, < 10um",
+					 "Sulfur oxides",
+					 "Black Carbon",
+					 "Organic Carbon",
+					 "Methane",
+					 "Dinitrogen monoxide",
+					 "Carbon dioxide, biogenic"],
+	
+	ElementaryFlowPath1=["Emission to air",
+						"Emission to air",
+						"Emission to air",
+						"Emission to air",
+						"Emission to air",
+						"Emission to air",
+						"Emission to air",
+						"Emission to air",
+						"Emission to air",
+						"Emission to air",
+						"Emission to air"],
+
+    ElementaryFlowPath2=["low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density"],
+	MethodName= ["CML-IA baseline"],
+	
+	Characterization_Factor =[
+						"Global warming (GWP100a)",
+						"Photochemical oxidation",
+						"Human toxicity",
+						"Abiotic depletion",
+						"Eutrophication",
+						"Abiotic depletion (fossil fuels)",
+						"Marine aquatic ecotoxicity",
+						"Ozone layer depletion (ODP)", 
+						"Terrestrial ecotoxicity",
+						"Acidification",	
+						"Fresh water aquatic ecotox."],	
+	
+	MethodologyType=["attributional"],
+    AllocationType=["energy"]	,
+	AllocationUnits =[" ", " "]
+	);	
+	
+	
+	NoComps as Integer(Default = 5);
+
+	DEVICES
+	lca1	as LCABasic;
+	
+	SET
+	lca1.ni=2;
+	lca1.ncf=11;
+	lca1.no=2;
+	lca1.ne=11;
+	
+	
+	VARIABLES
+	water 	as Real (Unit = 'kg');
+	vapor	as Real  (Unit= 'kJ');
+	
+	time_s as Real (Unit= 'h');
+	
+	Mtime as Real;
+	
+	Wtotal as Real  (Brief = "Total Electric Energy Produced",  Unit= 'MW*h', Upper = 1e14);
+	WCons as Real (Brief = "Power Consumption by the Several Process Stages",  Unit= 'MW*h',Upper = 1e14);
+	Wnet as Real (Brief = "Electric Energy Surplus Produced",  Unit= 'MW*h',Upper = 1e14);
+	
+	eff as Real;
+	eff_t as Real;
+	
+	greet as greet_estimation;
+
+	emissao_CO2_biogenico as Real(Unit= 'kg');
+
+	
+	EQUATIONS 
+	
+	greet.bagasse = S101.Outlet.Total.Fw*time_s;
+	water = makeup* time_s;
+	vapor =(-wE103.Q)*time_s; #MJ
+
+
+	WCons=(PS_Deaerator.Outlet_p.W+PS_Makeup.Outlet_p.W)*time_s; #CORRIGIR
+	Wtotal=(wT101.Outlet_p.W+wT102.Outlet_p.W+wT103.Outlet_p.W)*time_s;
+	Wnet=(Wtotal-WCons);
+	
+	eff=((Wnet+vapor)/time_s)/B101.q_comb;
+	
+	eff_t=((Wnet)/time_s)/B101.q_comb;
+	
+	#Allocation Parameters
+	
+	lca1.alloc_par(1)=1; #MJ/kg PCI ethanol
+	lca1.alloc_par(2)=1; #MJ tempo em s
+	
+	#CO2 Biogenic Emissions
+	emissao_CO2_biogenico = (B101.Gas.Total.zw(flu.CO2)*B101.Gas.Total.Fw)*time_s;
+	
+	time_s= 1*'h'; 
+	
+	Mtime=(210*24*0.8*25)*'h'/time_s;
+	
+
+	SPECIFY
+
+	#In the same order to the Input declared in PARAMETERS
+	# SPECIFY HERE THE QUANTITIES IN KG (DIMENSIONLESS)
+	lca1.input_values(1) =	greet.bagasse/(1*'kg');
+	lca1.input_values(2) =	water/(1*'kg');
+	
+	#In the same order to the Emission declared in PARAMETERS
+	# SPECIFY HERE THE QUANTITIES IN KG (DIMENSIONLESS)
+	lca1.emission_values(1)= greet.VOC_total/(1*'kg');
+	lca1.emission_values(2)= greet.CO_total/(1*'kg');
+	lca1.emission_values(3)= greet.NO_total/(1*'kg');
+	lca1.emission_values(4)= greet.PM25_total/(1*'kg');
+	lca1.emission_values(5)= greet.PM10_total/(1*'kg');
+	lca1.emission_values(6)= greet.SO_total/(1*'kg');
+	lca1.emission_values(7)= greet.BC_total/(1*'kg');
+	lca1.emission_values(8)= greet.OC_total/(1*'kg');
+	lca1.emission_values(9)= greet.CH4_total/(1*'kg');
+	lca1.emission_values(10)= greet.N2O_total/(1*'kg');
+	lca1.emission_values(11)= emissao_CO2_biogenico/(1*'kg');
+	
+
+	#In the same order to the Output declared in PARAMETERS
+	# SPECIFY HERE THE QUANTITIES (DIMENSIONLESS)
+	lca1.output_values(1)= vapor/(1*'MJ'); #in MJ tempo em s (MW*tempo(s))
+	lca1.output_values(2)= Wnet/(1*'MJ'); #in MJ tempo em s (MW*tempo(s))
+	#lca1.output_values(1)= 1e-8; #in MJ tempo em s (MW*tempo(s))
+	
+
+
+#### Simplified Economic Assessment 
+	VARIABLES
+	
+		PROFIT as Real (Brief = "process income",Unit='US$');
+		PROFIT_cc as Real (Brief = "process income",Unit='US$');
+		CarbonCredit as Real (Brief = "carbon credit",Unit='US$');
+		Cbio_price as Real (Brief = "eletricity price", Default=43, Unit='US$/t');
+		vapor_price as Real (Brief = "eletricity price", Default=17.70, Unit='US$/GJ'); 
+	
+		CarbonCredit_perGJ as Real (Brief = "carbon credit",Unit='US$/GJ');
+	
+		PROFIT_perGJ as Real (Brief = "process income",Unit='US$/GJ');
+
+		water_price as Real (Brief = "water price", Default=0.005235, Unit='US$/kg');
+		EleGen_price as Real (Brief = "eletricity price", Default=59.50, Unit='US$/(MW*h)'); 
+		bagasse_price as Real (Brief = "Bagasse price", Default=0.15875, Unit='US$/kg');
+	
+	
+		EmissionsAvoided as Real (Brief = "emissions avoided",Unit='kg');
+	
+		EmissionsAvoided_perGJ as Real (Brief = "emissions avoided",Unit='kg/GJ');
+
+
+	SPECIFY
+
+		Cbio_price=43*'US$/t';
+
+		water_price=0.005235*'US$/kg';
+		EleGen_price=59.50*'US$/(MW*h)';
+		bagasse_price=0.15875*'US$/kg';
+		#bagasse_price=0.01458*'US$/kg';
+	
+		vapor_price=0*'US$/GJ';
+	
+	
+	
+	EQUATIONS
+	
+	
+	
+		CarbonCredit_perGJ=CarbonCredit/(vapor+Wnet);
+
+		CarbonCredit=Cbio_price*EmissionsAvoided;
+		
+		#EmissionsAvoided=(0.20101*'kg/(kW*h)'-lca1.r1(1)*'kg/MJ')*Wnet+(0.0273*'kg/(MJ)'-lca1.r1(2)*'kg/MJ')*vapor;	
+	
+		EmissionsAvoided=(0.20101*'kg/(kW*h)'-lca1.r1(1)*'kg/MJ')*(Wnet+vapor);	
+	
+		EmissionsAvoided_perGJ= EmissionsAvoided/(vapor+Wnet);
+	
+	
+		#CarbonCredit=Cbio_price*((0.58023*'kg/(kW*h)'-lca1.r1(1)*'kg/MJ')*Wnet+(0.02735*'kg/(MJ)'-lca1.r1(2)*'kg/MJ')*vapor);
+	
+		#CarbonCredit=Cbio_price*((0.20101*'kg/(kW*h)'-lca1.r1(1)*'kg/MJ')*Wnet+(0.0273*'kg/(MJ)'-lca1.r1(2)*'kg/MJ')*vapor);
+		
+	
+		PROFIT_cc=EleGen_price*Wnet+vapor_price*vapor-water_price*water-bagasse_price*greet.bagasse+CarbonCredit;
+	
+		PROFIT=EleGen_price*Wnet+vapor_price*vapor-water_price*water-bagasse_price*greet.bagasse;
+		
+		#EmissionsAvoided=(0.20101*'kg/(kW*h)'-lca1.r1(1)*'kg/MJ')*Wnet+(0.0273*'kg/(MJ)'-lca1.r1(2)*'kg/MJ')*vapor;	
+		
+		#EmissionsAvoided_perGJ= EmissionsAvoided/(vapor+Wnet);
+	
+		#vapor_price=20*'US$/GJ';	
+	
+		#PROFIT= 0 *'US$';
+	
+		PROFIT_perGJ=PROFIT/(vapor+Wnet);
+	
+		#PROFIT_cc = 0 *'US$';
+
+	
+	OPTIONS
+	Dynamic = false;
+	
+	#SIMULATE WITHOUT THE RECYCLES AND THEN SAVE GUESS FILE, THEN CORRECT THE RECYCLES CONNECTIONS
+	GuessFile = "F17.rlt";
+		
+	
+	NLASolver(
+		#File = "nlasolver",
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+
+
+
+end
+
+
+FlowSheet cogeracao_baixa_cond as cogeracao_baixa_basic
+
+
+	DEVICES
+
+	wTB_cond as turbine_w; #Condensation turbine
+	
+	wDP_cond as Desupper;  #Condensation Dessupper
+	S_cond as water_sourceL2; #Alternative Source to DP
+	
+	wEX_cond as cooler_wLD; #condenser
+	
+	wSP_Loss_cond as splitter_wL; # Loss Splitter
+	
+	PSS_cond as power_sourceR; # power source for cond turb pump
+	wPP_cond as pump_wR; # cond turb section pump
+	
+	CT as cooling_tower; #Cooling Tower
+	
+	CONNECTIONS
+	
+	wSP103.Outlet2 to wTB_cond.Inlet; #LP Splitter to Condensation Turbine
+	
+	wTB_cond.Outlet to  wDP_cond.Inlet; #Condensation Turbine to Desupper
+	
+	#S_cond.Outlet to wDP_cond.Water; #RECYCLE 3 (UNCOMMENT IF NECESSARY) KEEP THE TEXT
+	
+	wSP107.Outlet2 to wDP_cond.Water; #RECYCLE 3 (COMMENT IF NECESSARY) KEEP THE TEXT
+		
+	wDP_cond.Outlet to wEX_cond.Inlet; #Desupper to Condenser
+	
+	wEX_cond.Outlet to  wSP_Loss_cond.Inlet; #Condenser to Loss Splitter
+	
+	wSP_Loss_cond.Outlet1 to wPP_cond.Inlet; #Loss Splitter to Pump
+	
+	PSS_cond.Outlet_p to wPP_cond.Inlet_p; #Power Source to Pump
+	
+	wPP_cond.Outlet to wMX_Manifold.Inlet(3); #Pump to Condensed Water Manifold
+	
+	#CT as cooling_tower_basic;
+	wSP_Makeup.Outlet2 to CT.MakeupInlet; #Makeup Splitter to Cooling Water MAkeup
+
+	
+	SET
+
+	#Condensed Water Manifold
+	wMX_Manifold.n=3;
+	wMX_Manifold.Outlet.ValidPhases = "Liquid-Only";
+	
+	# Alternative source to desupper
+	S_cond.ValidPhases = "Liquid-Only";
+	
+	#Condenser	
+	wEX_cond.Outlet.ValidPhases ="Vapour-Liquid";
+	
+	#Cooling Tower
+	CT.CC=5;
+	CT.n=0.75;
+	
+	SPECIFY
+	
+	#Bagasse Quantity
+	S101.Outlet.Total.Fw=117325*'kg/h';
+	
+	#Turbine of condensation
+	wTB_cond.Outlet.P = 0.1 * 'bar';
+	wTB_cond.EF_T = ProPar.TurbineEff;
+	wTB_cond.EF_ME = ProPar.MechanicalEff;	
+	
+	#Alternative water source
+	S_cond.T= 378.372 * 'K';
+	S_cond.P= 66.1239 * 'atm';
+	#S_cond.Fw= 1* 'kg/h';
+	
+	#Desupper	
+	wDP_cond.Outlet.P= 0.1 * 'bar';	
+	
+	#Condenser
+	wEX_cond.Outlet.P = 0.1* 'bar';
+	wEX_cond.U = ProPar.U;
+	wEX_cond.lmtd = 10 * 'K';
+	wEX_cond.Outlet.v=0;
+	
+	#Loss Spliter
+	wSP_Loss_cond.frac=0.96;
+		
+	#Pump
+	wPP_cond.Outlet.P = 2.5 *'atm';
+	wPP_cond.n = ProPar.PumpEff;
+		
+	#Cooling Tower
+	CT.P=1*'atm';
+	CT.Tin=(40+273.15)*'K';
+	CT.Tout=(30+273.15)*'K';
+
+	EQUATIONS
+	
+	#Splitter to 
+	wSP107.Outlet2.Fw=S_cond.Outlet.Fw;
+	
+	#Cooling Tower
+	CT.Qtower=-wEX_cond.Q;
+	
+	
+	OPTIONS
+	Dynamic = false;
+	
+	GuessFile = "F21_cond.rlt";
+
+
+	NLASolver(
+		#File = "nlasolver",
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+
+
+
+end
+
+
+FlowSheet LCA_cogeracao_baixa_cond as cogeracao_baixa_cond
+
+
+
+	#################LCA###########################
+	
+	#LCA Configuration
+
+PARAMETERS
+
+	obj     as Plugin(Type= "EMSO_OLCA",
+	
+	
+	
+	UnitFilePath=["..//..//..//..//EMSO_OLCA/EMSO_OLCA_units.csv"],
+		
+	DataBasePath=["..//..//..//..//EMSO_OLCA/MetodosData"],
+	
+	InputFileName=["..//..//..//..//EMSO_OLCA/bagaco.csv"],
+	
+	
+	Inputs=["market for bagasse, from sugarcane | bagasse, from sugarcane | Cutoff, U - BR",
+			"market for tap water | tap water | Cutoff, U - BR"],
+		
+	
+	OutputName=["vapor", "wNET"],
+	OutputUnit=["MJ", "MJ"],
+	
+	ElementaryFlows=["NMVOC, non-methane volatile organic compounds, unspecified origin",
+				"Carbon monoxide",
+				"Nitrogen oxides",
+				"Particulates, < 2.5 um",
+				"Particulates, < 10um",
+				"Sulfur oxides",
+				"Black Carbon",
+				"Organic Carbon",
+				"Methane",
+				"Dinitrogen monoxide",
+				"Carbon dioxide, biogenic"],
+	
+	ElementaryFlowPath1=["Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air",
+					"Emission to air"],
+
+    ElementaryFlowPath2=["low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density",
+						"low population density"],
+	MethodName= ["CML-IA baseline"],
+	
+	Characterization_Factor =[
+						"Global warming (GWP100a)",
+						"Photochemical oxidation",
+						"Human toxicity",
+						"Abiotic depletion",
+						"Eutrophication",
+						"Abiotic depletion (fossil fuels)",
+						"Marine aquatic ecotoxicity",
+						"Ozone layer depletion (ODP)", 
+						"Terrestrial ecotoxicity",
+						"Acidification",	
+						"Fresh water aquatic ecotox."],	
+		
+	MethodologyType=["attributional"],
+    AllocationType=["energy"]	,
+	AllocationUnits =[" ", " "]
+	);	
+	
+	NoComps as Integer(Default = 5);
+
+	DEVICES
+	lca1	as LCABasic;
+	
+	SET
+	lca1.ni=2;
+	lca1.ncf=11;
+	lca1.no=2;
+	lca1.ne=11;
+	
+	
+	VARIABLES	
+	
+	greet as greet_estimation;
+	
+	emissao_CO2_biogenico as Real(Unit= 'kg');
+
+	water 	as Real (Unit = 'kg');
+	vapor	as Real  (Unit= 'MW*h');
+	
+	time_s as Real (Unit= 's');
+	Mtime as Real;
+	
+	Wtotal as Real  (Brief = "Total Electric Energy Produced",  Unit= 'kJ', Upper = 1e14);
+	WCons as Real (Brief = "Power Consumption by the Several Process Stages",  Unit= 'kJ',Upper = 1e14);
+	Wnet as Real (Brief = "Electric Energy Surplus Produced",  Unit= 'MW*h',Upper = 1e14);
+	
+
+	eff as Real;
+	
+
+	EQUATIONS 
+	
+	greet.bagasse = S101.Outlet.Total.Fw*time_s;
+	
+	water = (makeup)* time_s;
+	
+	vapor =(-wE103.Q)*time_s; #MJ
+
+	WCons=(PS_Deaerator.Outlet_p.W+
+		   PS_Makeup.Outlet_p.W+
+		   PSS_cond.Outlet_p.W+
+	       CT.Eletricity_consumption)*time_s; 
+	
+	Wtotal=(wT101.Outlet_p.W+
+			wT102.Outlet_p.W+
+			wT103.Outlet_p.W+
+			wTB_cond.Outlet_p.W)*time_s;
+
+	Wnet=(Wtotal-WCons);
+	
+	eff=((Wnet+vapor)/time_s)/B101.q_comb;
+	
+	
+	#parametros da Alocao
+	#Ex: lca1.alloc_par(1)= PCI.etanol_anidro/(1*'MJ/kg'); #MJ/kg PCI ethanol
+	
+	lca1.alloc_par(1)=1; #MJ/kg PCI ethanol
+	lca1.alloc_par(2)=1; #MJ tempo em s
+	
+	emissao_CO2_biogenico = (B101.Gas.Total.zw(flu.CO2)*B101.Gas.Total.Fw)*time_s;
+	
+	time_s= 1*'h'; 
+
+
+	Mtime=(210*24*0.8*25)*'h'/time_s;
+
+	SPECIFY
+	#In the same order to the Input declared in PARAMETERS
+	# SPECIFY HERE THE QUANTITIES IN KG (DIMENSIONLESS)
+	lca1.input_values(1) =	greet.bagasse/(1*'kg');
+	lca1.input_values(2) =	water/(1*'kg');
+	
+
+	#In the same order to the Emission declared in PARAMETERS
+	# SPECIFY HERE THE QUANTITIES IN KG (DIMENSIONLESS)
+	lca1.emission_values(1)= greet.VOC_total/(1*'kg');
+	lca1.emission_values(2)= greet.CO_total/(1*'kg');
+	lca1.emission_values(3)= greet.NO_total/(1*'kg');
+	lca1.emission_values(4)= greet.PM25_total/(1*'kg');
+	lca1.emission_values(5)= greet.PM10_total/(1*'kg');
+	lca1.emission_values(6)= greet.SO_total/(1*'kg');
+	lca1.emission_values(7)= greet.BC_total/(1*'kg');
+	lca1.emission_values(8)= greet.OC_total/(1*'kg');
+	lca1.emission_values(9)= greet.CH4_total/(1*'kg');
+	lca1.emission_values(10)= greet.N2O_total/(1*'kg');
+	lca1.emission_values(11)= emissao_CO2_biogenico/(1*'kg');
+	
+	#In the same order to the Output declared in PARAMETERS
+	# SPECIFY HERE THE QUANTITIES (DIMENSIONLESS)
+	lca1.output_values(1)= vapor/(1*'MJ'); #in MJ tempo em s (MW*tempo(s))
+#	lca1.output_values(1)= 1e-6; #in MJ tempo em s (MW*tempo(s))
+	
+	lca1.output_values(2)= Wnet/(1*'MJ'); #in MJ tempo em s (MW*tempo(s))
+	
+	
+	#### Simplified Economic Assessment 
+	VARIABLES
+	
+		PROFIT as Real (Brief = "process income",Unit='US$');
+		PROFIT_cc as Real (Brief = "process income",Unit='US$');
+		CarbonCredit as Real (Brief = "carbon credit",Unit='US$');
+		Cbio_price as Real (Brief = "eletricity price", Default=43, Unit='US$/t');
+	
+		vapor_price as Real (Brief = "eletricity price", Default=17.70, Unit='US$/GJ'); 
+	
+		CarbonCredit_perGJ as Real (Brief = "carbon credit",Unit='US$/GJ');
+	
+		PROFIT_perGJ as Real (Brief = "process income",Unit='US$/GJ');
+	
+		ratio_water as Real;
+	
+		EmissionsAvoided as Real (Brief = "emissions avoided",Unit='kg');
+	
+		EmissionsAvoided_perGJ as Real (Brief = "emissions avoided",Unit='kg/GJ');
+
+	VARIABLES
+
+		water_price as Real (Brief = "water price", Default=0.005235, Unit='US$/kg');
+		EleGen_price as Real (Brief = "eletricity price", Default=59.50, Unit='US$/(MW*h)'); 
+		bagasse_price as Real (Brief = "Bagasse price", Default=0.15875, Unit='US$/kg');
+
+
+	SPECIFY
+
+		Cbio_price=43*'US$/t';
+	
+		#bagasse_price=0.01458*'US$/kg';
+		bagasse_price=0.15875* 'US$/kg';
+		
+		water_price=0.005235*'US$/kg';
+		
+		EleGen_price=59.50*'US$/(MW*h)';
+	
+		vapor_price=0*'US$/GJ';
+	
+	
+	EQUATIONS
+	
+		CarbonCredit_perGJ=CarbonCredit/(vapor+Wnet);
+	
+		#CarbonCredit=Cbio_price*((0.58023*'kg/(kW*h)'-lca1.r1(1)*'kg/MJ')*Wnet+(0.0273*'kg/(MJ)'-lca1.r1(2)*'kg/MJ')*vapor);
+	
+		CarbonCredit=Cbio_price*EmissionsAvoided;
+		
+		#EmissionsAvoided=(0.20101*'kg/(kW*h)'-lca1.r1(1)*'kg/MJ')*Wnet+(0.0273*'kg/(MJ)'-lca1.r1(2)*'kg/MJ')*vapor;	
+	
+		EmissionsAvoided=(0.20101*'kg/(kW*h)'-lca1.r1(1)*'kg/MJ')*(Wnet+vapor);	
+	
+		EmissionsAvoided_perGJ= EmissionsAvoided/(vapor+Wnet);
+	
+		PROFIT_cc=EleGen_price*Wnet+vapor_price*vapor-water_price*water-bagasse_price*greet.bagasse+CarbonCredit;
+	
+		PROFIT=EleGen_price*Wnet+vapor_price*vapor-water_price*water-bagasse_price*greet.bagasse;
+	
+		PROFIT_perGJ=PROFIT/(vapor+Wnet);
+		
+		#vapor_price=20*'US$/GJ';	
+	
+		#vapor_price= 0 *'US$/GJ';
+	
+		ratio_water=CT.MakeupInlet.Fw/CT.Fw;
+	
+		#PROFIT= 0 *'US$';
+	
+		#PROFIT_cc = 0 *'US$';
+	
+	OPTIONS
+	Dynamic = false;
+
+	GuessFile = "F21_cond.rlt";
+
+	NLASolver(
+		#File = "nlasolver",
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+
+end
+
+
+
+
+
+CaseStudy CogenerationLowPCondEle as LCA_cogeracao_baixa_cond
+	
+	VARY
+	
+	
+	wE103.Q=[-50:-10:-300]*'MW';	
+
+	#wE103.Q=-113.35 *'MW';
+	
+	RESPONSE
+	
+	greet.bagasse;
+	
+	lca1.r1(1);
+#	lca1.r2(1);
+#	lca1.r3(1);
+#	lca1.r4(1);
+#	lca1.r5(1);
+#	lca1.r6(1);
+#	lca1.r7(1);
+#	lca1.r8(1);
+#	lca1.r9(1);
+#	lca1.r10(1);
+#	lca1.r11(1);
+	
+	CarbonCredit_perGJ;
+	
+	PROFIT_perGJ;
+	
+	EmissionsAvoided;
+	
+	EmissionsAvoided_perGJ;
+	
+	eff;
+	
+	OPTIONS
+	Dynamic = false;
+	GuessFile = "F21_cond.rlt";
+
+
+	NLASolver(
+		#File = "nlasolver",
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+	
+	end
+	
+	
+
+CaseStudy CogenerationCondCC as LCA_cogeracao_baixa_cond
+	
+	VARY
+	
+	Cbio_price=[0:10:300] * 'US$/kg';
+	
+	
+#	wE103.Q=[-50:-10:-300]*'MW';	
+
+	
+	RESPONSE
+	
+	vapor_price;
+	
+	
+	OPTIONS
+	Dynamic = false;
+	GuessFile = "F21_cond.rlt";
+
+
+	NLASolver(
+		#File = "nlasolver",
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+	
+	end
+
+
+
+CaseStudy CogenerationCC as LCA_cogeracao_baixa
+	
+	VARY
+	
+	Cbio_price=[0:10:300] * 'US$/kg';
+	
+	
+#	wE103.Q=[-50:-10:-300]*'MW';	
+
+	
+	RESPONSE
+	
+	vapor_price;
+	
+	
+	OPTIONS
+	Dynamic = false;
+	GuessFile = "F21_cond.rlt";
+
+
+	NLASolver(
+		#File = "nlasolver",
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+	
+	end
+
+
+
+CaseStudy CogenerationCondQ_CC as LCA_cogeracao_baixa_cond
+	
+	VARY
+	
+#	Cbio_price=[0:10:300] * 'US$/kg';
+	
+	
+	wE103.Q=[-50:-10:-300]*'MW';	
+
+	
+	RESPONSE
+	
+	vapor_price;
+	
+	
+	OPTIONS
+	Dynamic = false;
+	GuessFile = "F21_cond.rlt";
+
+
+	NLASolver(
+		#File = "nlasolver",
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+	
+	end
+
+CaseStudy CogenerationLowPCond_Prices as LCA_cogeracao_baixa_cond
+	
+	VARY
+	
+	
+	#wE103.Q=[-50:-10:-300]*'MW';	
+
+	bagasse_price=[0.015:0.005:0.150]* 'US$/kg';
+	
+	#EleGen_price=[20:10:100]*'US$/(MW*h)';
+	
+	RESPONSE
+	
+	EleGen_price;
+	
+	OPTIONS
+	Dynamic = false;
+	GuessFile = "F20_cond.rlt";
+
+
+	NLASolver(
+		#File = "nlasolver",
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+	
+end
+
+
+CaseStudy CogenerationLowP as LCA_cogeracao_baixa
+	
+	VARY
+	
+	
+	wE103.Q=[-50:-10:-300]*'MW';
+	
+	#wE103.Q=-113.35 *'MW';
+	
+	
+	RESPONSE
+
+
+	greet.bagasse;
+	
+	lca1.r1(1);
+	
+	CarbonCredit_perGJ;
+	
+	PROFIT_perGJ;
+	
+	EmissionsAvoided;
+	
+	EmissionsAvoided_perGJ;
+	
+	eff;
+	
+#	greet.bagasse;
+#	water;
+#	vapor;
+#	Wtotal;
+#	WCons;
+#	Wnet;	
+#	eff;
+#	PROFIT;	
+#	CarbonCredit;
+#	CarbonCredit_perMJ;
+#	vapor_price;
+#	greet.VOC_total;
+#	greet.CO_total;
+#	greet.NO_total;
+#	greet.PM25_total;
+#	greet.PM10_total;
+#	greet.SO_total;
+#	greet.BC_total;
+#	greet.OC_total;
+#	greet.CH4_total;
+#	greet.N2O_total;
+#	emissao_CO2_biogenico;
+#	lca1.r1(1);
+#	lca1.r2(1);
+#	lca1.r3(1);
+#	lca1.r4(1);
+#	lca1.r5(1);
+#	lca1.r6(1);
+#	lca1.r7(1);
+#	lca1.r8(1);
+#	lca1.r9(1);
+#	lca1.r10(1);
+#	lca1.r11(1);
+#	CarbonCredit_perGJ;
+#	PROFIT_perGJ;
+#	EmissionsAvoided;
+#	EmissionsAvoided_perGJ;
+	
+	
+	
+	OPTIONS
+	Dynamic = false;
+	
+	#GuessFile = "cogeracao_baixa3.rlt";
+
+	#GuessFile = "cogeracao_baixa_cond3.rlt";
+	
+	#GuessFile = "lca_cogeracao_baixa_new3.rlt";
+
+	GuessFile = "F17.rlt";
+	NLASolver(
+		#File = "nlasolver",
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+	
+	end
+	
+
+
+Optimization Optim as LCA_cogeracao_baixa_cond
+	
+	VARIABLES
+
+	FREE
+
+	factor;
+
+	MINIMIZE
+	vapor_price/'US$/GJ';
+	
+	EQUATIONS
+
+#	factor<=2;
+		
+	OPTIONS
+	Dynamic = false;
+	NLPSolveNLA = false;
+	FeasiblePath = true;
+
+	NLPSolver(File = "complex",
+			  #File = "optpp_emso",
+			  #File = "ipopt_emso",
+			  MaxIterations = 1000,
+			  RelativeAccuracy = 1e-3, AbsoluteAccuracy=1e-4);
+	
+	GuessFile = "F18_cond.rlt";
+end

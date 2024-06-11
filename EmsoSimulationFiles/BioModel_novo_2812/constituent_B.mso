@@ -1,0 +1,75 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Virtual
+*--------------------------------------------------------------------
+* Nome do arquivo: constituent.mso
+* Projeto: producao de boidiesel
+* Conteudo: Modelos com os indices dos componentes nos vetores usados
+*			nas simulacoes e tambem os valores gerais dos principais
+*			parametros de processo.
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* versao 2.1
+* Data:   04/2017
+* Autor:  Erich Potrich
+* Utiliza a versao 1.0 da biorrefinaria
+* 
+*--------------------------------------------------------------------
+*Descricao: simulacao da producao de Biodiesel
+*--------------------------------------------------------------------*#
+
+using "types";
+
+Model ConstituentFluid
+	PARAMETERS
+	Water 				as Integer (Brief = "Water", Default = 1);
+	Sucrose 			as Integer (Brief = "Sucrose", Default = 2);
+	Glucose 			as Integer (Brief = "Glucose", Default = 3);
+	Xylose 				as Integer (Brief = "Xylose", Default = 4);
+	Ethanol 			as Integer (Brief = "Ethanol", Default = 5);
+	CO2 				as Integer (Brief = "Carbon Dioxide", Default = 6);
+	CO	 				as Integer (Brief = "Carbon Monoxide", Default = 7);
+	O2 					as Integer (Brief = "Oxygen", Default = 8);
+	N2 					as Integer (Brief = "Nitrogen", Default = 9);
+	H2 					as Integer (Brief = "Hydrogen", Default = 10);
+	CH4 				as Integer (Brief = "Methane", Default = 11);
+	Ammonia 			as Integer (Brief = "Ammonia", Default = 12);
+	Lignin 				as Integer (Brief = "Soluble Lignin", Default = 13);
+	Xylan 				as Integer (Brief = "Xylooligomers", Default = 14);
+	AceticAcid 			as Integer (Brief = "Acetic Acid", Default = 15);
+	Furfural 			as Integer (Brief = "Furfural", Default = 16);
+	HMF 				as Integer (Brief = "Hydroxymethylfurfural", Default = 17);
+	Glycerol 			as Integer (Brief = "Glycerol", Default = 18);
+	Solunkn				as Integer (Brief = "Unknown sugars", Default = 19);
+	MEG 				as Integer (Brief = "Ethylene Glycol", Default = 20);
+	H2SO4 				as Integer (Brief = "Sulfuric Acid", Default = 21);
+	PhosphoricAcid		as Integer (Brief = "Phosphoric Acid", Default = 22);
+	Impurities 			as Integer (Brief = "Impurities", Default = 23);
+	Cellobiose			as Integer (Brief = "Cellobiose", Default = 24);
+	AmmoniumHydroxide 	as Integer (Brief = "Ammonium Hydroxide", Default = 25);
+	Oil					as Integer (Brief = "Soy Oil", Default = 26);
+	Biodiesel			as Integer (Brief = "Biodiesel of Ethanol", Default = 27);
+	Acid				as Integer (Brief = "Fatty Acid", Default = 28);
+	Hexane				as Integer (Brief = "N-Hexane", Default = 29);
+	Methanol			as Integer (Brief = "Methanol", Default = 30);
+	Biodiesel_Met		as Integer (Brief = "Biodiesel of Methanol", Default = 31);
+	NaOH				as Integer (Brief = "Sodium Hydroxide", Default = 32);
+	
+end
+
+Model ConstituentSolid
+	PARAMETERS
+	Cellulose			as Integer (Brief = "Cellulose", Default = 1);
+	Hemicell 			as Integer (Brief = "Hemicellulose", Default = 2);
+	Lignin 				as Integer (Brief = "Lignin", Default = 3);
+	Ash 				as Integer (Brief = "Ashes", Default = 4);
+	Enzyme 				as Integer (Brief = "Enzyme", Default = 5);
+	Yeast 				as Integer (Brief = "Yeast", Default = 6);
+	CaOH2 				as Integer (Brief = "Calcium Hydroxide", Default = 7);
+	Calciumphosphate	as Integer (Brief = "Calcium Phosphate", Default = 8);
+	Impurities 			as Integer (Brief = "Impurities", Default = 9);
+	Protein				as Integer (Brief = "Soy Protein", Default = 10);
+	Glycerol_Sol 		as Integer (Brief ="Glycerol as Solid", Default = 11);
+	
+end

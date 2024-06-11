@@ -1,0 +1,463 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Petrobras
+*--------------------------------------------------------------------
+* Nome do arquivo: boiler.mso
+* Projeto: Modelo integrado de producao de etanol 1G/2G
+* Conteudo: caldeira
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Versao 2.2
+* Data:    03/2016
+* Autores:   Anderson R. A. Lino e Gabriel C. Fonseca
+* 
+*--------------------------------------------------------------------
+*Descricao: modelo da caldeira que sera empregada na biorrefinaria
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+*Hipoteses assumidas: 1 - equilibrio termico
+*                     2 - equilibrio mecanico
+*  					  3 - geracao somente de CO2 e H2O
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+*Notas: Foram feitos 2 flowsheets para averiguar os modelos 
+*--------------------------------------------------------------------*#
+
+using "..//main_stream";
+using "..//water_stream";
+using "..//energy_stream";
+using "..//bib";
+
+Model boiler
+	
+	ATTRIBUTES
+	Pallete 	= true;
+	Icon 		= "icon/boiler";
+	Brief 		= "Simplified Boiler Model";
+	Info = 
+"== GENERAL ==
+	Modeling of a boiler based on a stoichiometric approach.
+	The conversion of the reactions should be specified based on the 
+	liminting compound. Also, the limiting compound should have a
+	stoichiometric coefficient equal to minus one. The model also 
+	regards some process variables such as the excess of air, the 
+	lower and the higher heating values, the boiler efficiency related 
+	to both of them, the specific steam production and the heat lost to 
+	the surroundings (based on the higher heating value).
+
+	Note that the higher heating value (HHV) is defined here as the heat 
+	of combustion at 298.15 K, as defined by the American Petroleum 
+	Institute. The lower heating value (LHV), on the other hand, is 
+	defined here as commonly used in the sugar and ethanol industry. This 
+	definition assumes that all combustion products (water and carbon 
+	dioxide) are present as gases at 298.15 K. It is impontant to note 
+	that this definition considers not only the water produced by the 
+	combustion but also the one present in the inlet streams (Fuel and 
+	Air streams).
+
+== ASSUMPTIONS ==
+* All three-phases can be involved;
+* Steady-state;
+* Only carbon dioxide and water are produced in the combustion.
+
+== SPECIFY ==
+* The Fuel and Air stream;
+  flow rate
+  temperature
+  pressure
+  stream composition;
+* The water steam stream:
+  temperature
+  pressure;
+* Conversion for each reaction based on the limiting compound;
+* Temperature of the outlet steam;
+* The boiler HHV or LHV efficiency;
+* The excess of air;
+* The pressure drop in the water/steam side;
+* The fraction of heat that is lost to the surroundings.
+
+== SET ==
+* Number of stream components(Ncomp/NcompS);
+* Phase of the stream feed;
+* Number of reactions;
+* Stoichiometric matrix;
+* Limiting compound for each reaction;
+* Heat of reaction;
+* The position in the compound vector of the water (NWater) and
+	the oxygen (NO2).
+	
+== ADITIONAL INFORMATION ==
+* Specific steam production (based on inlet fuel mass);
+* Dry and wet higher heating values;
+* Lower heating value;
+* Air humidity;
+* Boiler efficiency (based on both HHV and LHV).
+";
+
+#*-------------------------------------------------------------------
+#Parametros 
+*--------------------------------------------------------------------*#
+	
+	PARAMETERS
+	
+		propterm 						as Plugin 			(Brief = "IAPWS 97 properties of water",Type = "water");
+outer 	PP 								as Plugin			(Brief = "External Physical Properties (Fluid Phase)", Type="PP");
+outer 	PPS 							as Plugin			(Brief = "External Physical Properties (Solid Phase)", Type="PP");
+outer	NComp 							as Integer			(Brief = "Number Of Chemical Components");
+outer	NCompS 							as Integer			(Brief = "Number Of Chemical Components for the Solid Phase");
+		NReac 							as Integer			(Brief = "Number Of Reactions", Default = 1);
+		stoic(NComp + NCompS, NReac) 	as Real 			(Brief = "Stoichiometric Matrix, Matrix Size = NComp+NCompS, NReac");
+		limit(NReac)					as Integer			(Brief = "Limiting Component Index Number, Vector Size = NReac", Lower = 1);
+		h(NReac)						as heat_reaction	(Brief = "Molar Heat of Reaction Based on Limiting Component, Vector Size = NReac");
+		M(NComp)  						as molweight 		(Brief = "Component Mol Weight", Protected=true);
+		MS(NCompS)  					as molweight 		(Brief = "Component Mol Weight", Protected=true);
+outer	flu as ConstituentFluid(Symbol = " ", Protected = true);
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+	
+	SET
+
+	M   = PP.MolecularWeight();
+	MS   = PPS.MolecularWeight();
+
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+in 	Fuel 				as main_stream 			(Brief = "Inlet Mass Flow", PosX=0, PosY=0.65, Symbol="_{Fuel}", Protected = false);
+in 	Air 				as main_stream 			(Brief = "Inlet Air Flow", PosX=0, PosY=0.5, Symbol="_{Air}", Protected = false);
+in 	Water 				as water_stream			(Brief = "Inlet Water Mass Flow", PosX=0, PosY=0.02, Symbol="_{Water}", Protected = false);
+in	Inlet_q 			as heat_stream			(Brief = "Imported Energy", PosX=0, PosY=0.81, Protected =true,Symbol="_{in}");
+out Steam 				as water_stream_vapfrac	(Brief = "Vapour Outlet Flow", PosX=0.833, PosY=0.0, Symbol="_{Steam}", Protected = false);
+out	Gas 				as main_stream_eq		(Brief = "Outlet Gas", PosX=0.95, PosY=0, Symbol="_{Gas}", Protected = false);
+out	Ash 				as main_stream_eq		(Brief = "Outlet Ash", PosX=1, PosY=0.5, Symbol="_{Ash}", Protected = false);
+
+	FGas						as flow_mol				(Brief = "Stoichiometric Oxygen Molar Flow", Hidden = true, Symbol = "F_{stoichGas}");
+	zGas(NComp)					as fraction				(Brief = "Stoichiometric Oxygen Molar Fraction, Vector Size = NComp", Hidden = true, Symbol = "z_{stoichGas}");
+	F							as flow_mol				(Brief = "Total Inlet Stream Flow", Hidden = true);
+	z(NComp + NCompS) 			as fraction 			(Brief = "Total Inlet Composition, Vector Size = NComp+NCompS", Hidden = true);
+	Pdrop						as press_delta 			(Brief = "Pressure Drop in the Water/Steam Side", Symbol = "\Delta P");
+	T							as temperature 			(Brief = "Outlet Steam Temperature");
+	Efficiency_HHV 				as fraction 			(Brief = "Heat Transfer Efficiency (Higher Heating Value)", Symbol = "\eta_{HHV}");
+	Efficiency_LHV 				as fraction 			(Brief = "Heat Transfer Efficiency (Lower Heating Value)", Symbol = "\eta_{LHV}");
+	q_losses					as heat_rate			(Brief = "Heat Losses", Symbol = "q_{loss}");
+	f_losses					as fraction				(Brief = "Heat Fraction Losses", Symbol = "f_{loss}");
+	q_ex    					as heat_rate 			(Brief = "Heat Exchanged", Symbol = "q_{ex}");
+	q_HHV    					as heat_rate 			(Brief = "Higher Heating Value (Heat)", Symbol = "q_{HHV}", Hidden = true);
+	q_LHV    					as heat_rate 			(Brief = "Lower Heating Value (Heat)", Symbol = "q_{LHV}", Hidden = true);
+	q_comb    					as heat_rate 			(Brief = "Heat of Combustion at the Operational Temperature", Symbol = "q_{comb}", Hidden = true);
+	v_specific                  as Real             	(Brief = "Specific Production of Kilogram of Steam/Kilogram of Wet Bagasse", Symbol = "v_{specific}", Unit = 'kg/kg', Protected = true);
+	HHV_dry    					as Real 				(Brief = "Higher Heating Value - Dry Basis", Symbol = "HHV_{dry}", Default=500, Lower=-1e8, Upper=1e8, final Unit = 'kJ/kg');
+	HHV_wet    					as Real 				(Brief = "Higher Heating Value - Wet Basis", Symbol = "HHV_{wet}", Default=500, Lower=-1e8, Upper=1e8, final Unit = 'kJ/kg');
+	LHV    						as Real 				(Brief = "Lower Heating Value - Wet Basis", Default=500, Lower=-1e8, Upper=1e8, final Unit = 'kJ/kg');
+	r(NComp + NCompS, NReac) 	as Real					(Brief = "Ratio between component (i) production/consumption for the limiting component, Matrix Size = NComp+NCompS, NReac");
+	conv(NReac)					as fraction  			(Brief = "Reaction Conversion Based on Limiting Component, Vector Size = NReac");
+	Ex_Air						as fraction         	(Brief = "Excess Air fraction", Symbol = "Ex_{Air}");
+	humidity					as fraction				(Brief = "Fraction of Water in Air", Protected = true);
+	h_gas						as enth_mol 			(Brief = "Molar Enthalpy of Gas", Symbol = "h_{gas}", Hidden = true);	
+	h_ash                      	as enth_mol 			(Brief = "Molar Enthalpy of Ash", Symbol = "h_{ash}", Hidden = true);
+	h_air                      	as enth_mol 			(Brief = "Molar Enthalpy of Air", Symbol = "h_{air}", Hidden = true);
+	h_bag_sol                   as enth_mol 			(Brief = "Molar Enthalpy of Bagasse (Solid)", Symbol = "h_{bagsol}", Hidden = true);
+	h_bag_fluid                 as enth_mol 			(Brief = "Molar Enthalpy of Bagasse (Fluid)",Symbol = "h_{bagfluid}", Hidden = true);
+	x_gas_1(NComp)				as fraction 			(Brief = "Fraction of Liquids in Gas", Symbol = "x_{gas1}", Hidden = true);
+	y_gas_1(NComp)				as fraction 			(Brief = "Fraction of Vapour in Gas", Symbol = "y_{gas1}", Hidden = true);
+	v_gas_1						as fraction  			(Brief = "Fraction of Vapour in Mixture_Gas", Symbol = "v_{gas1}", Hidden = true);
+	x_gas_2(NComp)				as fraction 			(Brief = "Fraction of Liquids in Gas", Symbol = "x_{gas2}", Hidden = true);
+	y_gas_2(NComp)				as fraction 			(Brief = "Fraction of Vapour in Gas", Symbol = "y_{gas2}", Hidden = true);
+	v_gas_2						as fraction  			(Brief = "Fraction of Vapour in Mixture_Gas", Symbol = "v_{gas2}", Hidden = true);
+	x_air_1(NComp)				as fraction 			(Brief = "Fraction of Liquids in Air", Symbol = "x_{air1}", Hidden = true);
+	y_air_1(NComp)				as fraction 			(Brief = "Fraction of Vapour in Air", Symbol = "y_{air1}", Hidden = true);
+	v_air_1						as fraction  			(Brief = "Fraction of Vapour in Mixture_Air", Symbol = "v_{air1}", Hidden = true);
+	x_air_2(NComp)				as fraction 			(Brief = "Fraction of Liquids in Air", Symbol = "x_{air2}", Hidden = true);
+	y_air_2(NComp)				as fraction 			(Brief = "Fraction of Vapour in Air", Symbol = "y_{air2}", Hidden = true);
+	v_air_2						as fraction  			(Brief = "Fraction of Vapour in Mixture_Air", Symbol = "v_{air2}", Hidden = true);
+	
+	SET
+	Gas.Phase = "Vapour";
+	Ash.Phase = "Vapour";
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	
+	"Global Molar Balance for Water/Steam Side"
+		Water.Fw = Steam.Fw;
+	
+	"Steam Outlet Temperature"
+		Steam.T = T;
+	
+	"Thermal Equilibrium Fuel Side"
+		Gas.T = Ash.T;
+	
+	"Mechanical Equilibrium Water/Steam Side"
+		Steam.P = Water.P - Pdrop;
+	
+	"Mechanical Equilibrium Fuel Side 1, array = [Air.P, Fuel.P]"
+		Gas.P = min([Air.P, Fuel.P]);
+	
+	"Mechanical Equilibrium Fuel Side 2"
+		Gas.P = Ash.P;
+
+	"Enthalpy of Steam , array = [Steam.S, Steam.H]"
+	[Steam.S, Steam.H] = propterm.propPTv(Steam.P, Steam.T);
+	
+	"Heat Exchanged"
+	(Steam.H - Water.H) * Water.Fw = q_ex + Inlet_q.Q;
+	
+	"Ratio between component (i) production/consumption for the limiting component"
+	r(1:NComp+NCompS,:) = stoic(1:NComp+NCompS,:) * conv * z(limit);
+	
+	if (NReac equal 1) then
+		"Component Molar Balance (Fluid Phase)"
+		Gas.Fluid.F * Gas.Fluid.z(1:NComp) = Fuel.Fluid.F * Fuel.Fluid.z(1:NComp) + Air.Fluid.F * Air.Fluid.z(1:NComp) + F * r(1:NComp,1); 
+		
+		"Component Molar Balance (Stoichiometric oxygen)"
+		FGas * zGas(1:NComp) = Fuel.Fluid.F * Fuel.Fluid.z(1:NComp) + Air.Fluid.F *Air.Fluid.z(1:NComp) / (1+Ex_Air) + F * r(1:NComp,1);
+		
+		"Component Molar Balance (Solid Phase)"
+		Ash.Solid.F * Ash.Solid.z(1:NCompS) = Fuel.Solid.F * Fuel.Solid.z(1:NCompS) + Air.Solid.F * Air.Solid.z(1:NCompS) + F * r(NComp+1:NComp+NCompS,1); 
+	else
+		"Component Molar Balance (Fluid Phase)"
+		Gas.Fluid.F * Gas.Fluid.z(1:NComp) = Fuel.Fluid.F * Fuel.Fluid.z(1:NComp) + Air.Fluid.F * Air.Fluid.z(1:NComp) + F * sumt(r(1:NComp,:)); 
+		
+		"Component Molar Balance (Stoichiometric oxygen)"
+		FGas * zGas(1:NComp) = Fuel.Fluid.F * Fuel.Fluid.z(1:NComp) + Air.Fluid.F * Air.Fluid.z(1:NComp) / (1+Ex_Air) + F * sumt(r(1:NComp,:)); 
+	
+		"Component Molar Balance (Solid Phase)"
+		Ash.Solid.F * Ash.Solid.z(1:NCompS) = Fuel.Solid.F * Fuel.Solid.z(1:NCompS) + Air.Solid.F * Air.Solid.z(1:NCompS) + F * sumt(r(NComp+1:NComp+NCompS, :)); 
+	end
+	
+	"Sum of Molar Fractions for the Outlet Gas"
+	sum(Gas.Fluid.z) = 1;
+	
+	"Sum of Molar Fractions for the Outlet Ash"
+	sum(Ash.Solid.z) = 1;
+	
+	"Sum of Molar Fractions (Stoichiometric oxygen)"
+	sum(zGas) = 1;
+	
+	"Stoichiometric oxygen"
+	zGas(flu.O2) = 0;
+	
+	"Molar Enthalpy of Gas at 298.15 K"
+	[v_gas_1, x_gas_1, y_gas_1] = PP.Flash(298.15 * 'K', 1 * 'atm', Gas.Fluid.z);
+	
+	"Molar Enthalpy of Gas at Outlet Gas Temperature"
+	[v_gas_2, x_gas_2, y_gas_2] = PP.Flash(Gas.T, Gas.P, Gas.Fluid.z);
+	
+	"Molar Enthalpy Delta for the Gas Between 298.15 K and the Outlet Gas Temperature"
+	h_gas = (v_gas_2 * PP.VapourEnthalpy(Gas.T, Gas.P, y_gas_2) + (1 - v_gas_2) * PP.LiquidEnthalpy(Gas.T, Gas.P, x_gas_2)) 
+	- (v_gas_1 * PP.VapourEnthalpy(298.15 * 'K', 1 * 'atm', y_gas_1) + (1 - v_gas_1) * PP.LiquidEnthalpy(298.15 * 'K', 1 * 'atm', x_gas_1))
+	;
+
+	"Molar Enthalpy of Air at 298.15 K"
+	[v_air_1, x_air_1, y_air_1] = PP.Flash(298.15 * 'K', 1 * 'atm', Air.Fluid.z);
+	
+	"Molar Enthalpy of Gas at Inlet Air Temperature"
+	[v_air_2, x_air_2, y_air_2] = PP.Flash(Air.T, Air.P, Air.Fluid.z);
+	
+	"Molar Enthalpy Delta for the Air Between 298.15 K and the Inlet Air Temperature"
+	h_air = (v_air_1 * PP.VapourEnthalpy(298.15 * 'K', 1 * 'atm', y_air_1) + (1 - v_air_1) * PP.LiquidEnthalpy(298.15 * 'K', 1 * 'atm', x_air_1))
+	- (v_air_2 * PP.VapourEnthalpy(Air.T, Air.P, y_air_2) + (1 - v_air_2) * PP.LiquidEnthalpy(Air.T, Air.P, x_air_2)) 
+	;
+
+	"Molar Enthalpy Delta for the Ash Between 298.15 K and the Outlet Ash Temperature"
+	h_ash = PPS.VapourEnthalpy(Ash.T, Ash.P, Ash.Solid.z) - PPS.VapourEnthalpy(298.15 * 'K', Ash.P, Ash.Solid.z);
+
+	"Molar Enthalpy Delta for the Fuel Between 298.15 K and the Inlet Fuel Temperature (Solid Phase)"
+	h_bag_sol = PPS.VapourEnthalpy(298.15 * 'K', Fuel.P, Fuel.Solid.z) - PPS.VapourEnthalpy(Fuel.T, Fuel.P, Fuel.Solid.z);
+
+	"Molar Enthalpy Delta for the Fuel Between 298.15 K and the Inlet Fuel Temperature (Fluid Phase)"
+	h_bag_fluid = PP.LiquidEnthalpy(298.15 * 'K', Fuel.P, Fuel.Fluid.z) - PP.LiquidEnthalpy(Fuel.T, Fuel.P, Fuel.Fluid.z);
+	
+	"Energy Balance"
+	q_comb = q_ex + q_losses;
+
+	"Heat Losses"
+	q_losses = q_HHV * f_losses;
+
+	"Heat of Combustion at the Operational Temperature"
+	-q_comb = Air.Fluid.F * h_air + Fuel.Solid.F * h_bag_sol + F * sum(h *conv * z(limit)) + Fuel.Fluid.F * h_bag_fluid
+	+ Gas.Fluid.F * h_gas + Ash.Solid.F * h_ash;
+
+	"Higher Heating Value (Heat)"
+	-q_HHV = F * sum(h *conv * z(limit));
+
+	"Lower Heating Value (Heat)"
+	#q_LHV = q_HHV - (Outlet_Gas.F * Outlet_Gas.z(1) * M(1) - Inlet_Mass.F * Inlet_Mass.z(1) * M(1)) * 2464.67 * 'kJ/kg';#(API)
+	#q_LHV = q_HHV - Outlet_Gas.F * Outlet_Gas.z(1) * M(1) * 2464.67 * 'kJ/kg'; #(calor de vaporizacao a 15.15 graus celsius)
+	q_LHV = q_HHV - Gas.Fluid.Fw * Gas.Fluid.zw(flu.Water) * 2442.1 * 'kJ/kg'; #(calor de vaporizacao a 25 graus celsius)
+
+	"Higher Heating Value - Wet Basis"
+	HHV_wet * Fuel.Total.Fw = q_HHV;
+
+	"Higher Heating Value - Dry Basis"
+	HHV_dry * (Fuel.Total.Fw - Fuel.Fluid.Fw * Fuel.Fluid.z(flu.Water))= q_HHV;
+
+	"Lower Heating Value - Wet Basis"
+	LHV * Fuel.Total.Fw = q_LHV;
+
+	"Specific Production of Steam"
+	v_specific * Fuel.Total.Fw = Steam.Fw;
+
+	"Heat Transfer Efficiency (Lower Heating Value)"
+	Efficiency_LHV * q_LHV = q_ex;
+
+	"Heat Transfer Efficiency (Higher Heating Value)"
+	Efficiency_HHV * q_HHV = q_ex;
+
+	"Air Humidity"
+	humidity * (Air.Fluid.Fw - Air.Fluid.Fw * Air.Fluid.zw(flu.Water)) = Air.Fluid.Fw * Air.Fluid.zw(flu.Water);
+
+	"Total Inlet Composition (Fluid Phase)"
+	F * z(1:NComp) = Fuel.Fluid.F * Fuel.Fluid.z + Air.Fluid.F * Air.Fluid.z; 
+
+	"Total Inlet Composition (Solid Phase)"	
+	F * z(NComp + 1: NComp + NCompS) = Fuel.Solid.F * Fuel.Solid.z + Air.Solid.F * Air.Solid.z; 
+
+	"Total Inlet Stream Flow"
+	F = Fuel.Fluid.F + Fuel.Solid.F + Air.Fluid.F + Air.Solid.F;
+	
+	"Outlet Composition (Fluid Phase)"
+	Gas.Fluid.z = Ash.Fluid.z;
+	
+	"Outlet Composition (Solid Phase)"
+	Gas.Solid.z = Ash.Solid.z;
+	
+	"Solids in Gas Outlet"
+	Gas.Solid.F = 1e-6 * 'kmol/h';
+	
+	"Gases in Solid Outlet"
+	Ash.Fluid.F = 1e-6 * 'kmol/h';
+	
+end
+
+
+FlowSheet teste_boiler
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#
+	
+	DEVICES
+	S101 as main_sourceR;
+	S102 as water_sourceR;
+	S103 as main_sourceR;
+	B101 as boiler;
+	E101 as heat_sourceR;
+	
+#*-------------------------------------------------------------------
+* Especifica as conexoes entre os modelos
+*--------------------------------------------------------------------*#
+	
+	CONNECTIONS
+	S103.Outlet to B101.Air;
+	S101.Outlet to B101.Fuel;
+	S102.Outlet to B101.Water;
+	E101.Outlet_q to B101.Inlet_q;
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	S101.ValidPhases = "Liquid-Only";
+	S102.ValidPhases = "Liquid-Only";
+	S103.ValidPhases = "Vapour-Only";
+	NComp = PP.NumberOfComponents();
+	NCompS = PPS.NumberOfComponents();
+	B101.NReac = 3;
+	
+	B101.stoic (:,1) = [5, 0, 0, 0, 0, 6, 0, -6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0]; 			# Reaction 1:cellulose(C6H10O5) + 6O2 --> 5H2O + 6CO2
+	B101.stoic (:,2) = [4, 0, 0, 0, 0, 5, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0]; 			# Reaction 2:hemicellulose(C5H8O4) + 5O2 --> 4H2O + 5CO2
+	B101.stoic (:,3) = [5.8, 0, 0, 0, 0, 10, 0, -10.95, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0]; 	# Reaction 3:lignina(C10H11.6O3.9) + 10.95O2 --> 5.8H2O + 10CO2
+	B101.h = [-2575, -1954, -4401] * 'kJ/mol';
+	B101.limit = [NComp+sol.Cellulose,NComp+sol.Hemicell, NComp+sol.Lignin];
+	
+	
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+	
+	SPECIFY
+	S101.Fluid.Fw = 50000 * 'kg/h';
+	S101.Solid.Fw = 50000 * 'kg/h';
+	S101.T = 338.15 * 'K';
+	S101.P = 1 * 'atm';
+	S101.CompositionOfSolid = [0.4385, 0.2564, 0.233, 0.0285, 0, 0, 0, 0.043, 0];
+	S101.CompositionOfFluid = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+	
+	S102.T = 383.15 * 'K';
+	S102.P = 67 * 'bar';
+	
+	S103.Solid.F = 1e-6 * 'kmol/h';
+	S103.T = 303.15 * 'K';
+	S103.P = 1 * 'atm';
+	S103.CompositionOfSolid = [0.25, 0.20, 0.55, 0, 0, 0, 0, 0, 0];
+	S103.CompositionOfFluid = [0.013, 0, 0, 0, 0, 0, 0, 0.31, 0.677, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];#(massico-ar umido)
+	
+	B101.Efficiency_LHV = 0.85;
+	B101.Gas.T = 423.15 * 'K'; #150C
+	B101.T = 763.15 * 'K';
+	B101.Pdrop = 0 * 'bar';
+	B101.conv = [1, 1, 1];
+	B101.Ex_Air = 0.5;
+	B101.Inlet_q.Q = 0 * 'kW';
+	
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	PP as Plugin	(Brief = "External Physical Properties", 
+		Type="PP",
+		Project = "../Flowsheets/v2_2/Fluid_v2_2.vrtherm" 
+	);
+	PPS as Plugin	(Brief = "External Physical Properties", 
+		Type="PP",
+		Project = "../Flowsheets/v2_2/Solid_v2_2.vrtherm"
+	);
+	
+	NComp 	as Integer 	(Brief = "Number of chemical components in the fluid phase");
+	NCompS 	as Integer 	(Brief = "Number of chemical components in the solid phase");
+	flu as ConstituentFluid(Symbol = " ", Protected = true);
+	sol as ConstituentSolid(Symbol = " ", Protected = true);
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+	
+	SET
+	NComp = PP.NumberOfComponents();
+	NCompS = PPS.NumberOfComponents();
+	S101.CompositionBasis = "Mass";
+	S103.CompositionBasis = "Mass";
+	
+#*-------------------------------------------------------------------
+* Condicoes iniciais e opcoes de Solver
+*--------------------------------------------------------------------*#
+
+	OPTIONS
+	Dynamic = false;
+	Integration = "original";
+	NLASolver(
+		File = "sundials",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		MaxIterations = 100
+	);
+	DAESolver(
+		File = "dassl",
+		RelativeAccuracy = 1e-3,
+		AbsoluteAccuracy = 1e-6,
+		EventAccuracy = 1e-2
+	);
+end
+

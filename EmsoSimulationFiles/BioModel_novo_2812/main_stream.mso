@@ -1,0 +1,1455 @@
+#*-------------------------------------------------------------------
+* Biorrefinaria Petrobras 
+*--------------------------------------------------------------------
+* Nome do arquivo: main_stream.mso
+* Projeto: Modelo integrado de producao de etanol 1G/2G
+* Conteudo: corrente de materias 
+*--------------------------------------------------------------------*#
+
+#*-------------------------------------------------------------------
+*
+* Versao 2.2
+* Data:    03/2016
+* Autores:   Anderson R. A. Lino e Gabriel C. Fonseca 
+* 
+*--------------------------------------------------------------------
+*Descricao: modelo da corrente de materiais que sera utilizado
+*na simulacao do processo 
+*--------------------------------------------------------------------
+
+*--------------------------------------------------------------------
+* Notas: Os compostos solidos nao soluveis tem sua entalpia representada pela funcao
+* vapourEnthalpy. Foi a melhor adaptacao que pode ser feita, pois no caso do 
+* liquido, mesmo usando o modelo IdealLiquid, o Cp calculado nao eh diretamente
+* o Cp calculado pela equacao fornecida no VRTherm. Tambem foram feitos 
+* dois flowsheets para averiguar o modelo (teste e teste2).
+* 
+* Os modelos de corrente envolvendo solidos nao consideram o equilibrio termodinamico entre
+* a fase solida e as fases liquida ou vapor. Desta forma, caso haja uma transicao de fases
+* envolvendo a fase solida, o usuario devera representa-la como uma "reacao quimica".
+* Neste caso, vale ressaltar que os componentes envolvidos na transicao de fases devem estar
+* presentes tanto na fase solida quanto na fase fluida.
+*--------------------------------------------------------------------*#
+
+using "streams";
+
+Model fluid as stream
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "Fluid phase of the main stream";
+	Info = 
+	"== GENERAL ==
+	This is the model of the fluid part of the main stream.
+	In addition to the variables already present in the stream model, there are mass flow rate and mass fraction variables";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS	
+outer PP		as Plugin		(Brief = "External Physical Properties (Fluid Phase)", Type="PP");
+	M(NComp)  	as molweight 	(Brief = "Component Mol Weight (Fluid Phase), Vector Size = NComp", Protected=true);
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	M = PP.MolecularWeight();
+
+#*------------------------------------------------------------------
+* Declaracao de variaveis
+*-------------------------------------------------------------------*#
+
+	VARIABLES
+	Fw as flow_mass (Brief = "Fluid Phase Mass Flow", Symbol = "F_w");
+	zw(NComp) as fraction  (Brief = "Fluid Phase Mass Fraction, Vector Size = NComp", Symbol = "z_w");
+	Mw as molweight	(Brief = "Average Molar Weight", Symbol = "M_w");
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	if Fw equal 0 * 'kg/h' then
+		"Average Molar Weight (Fluid Phase)"
+		Mw = 1 * 'kg/kmol';
+		
+		"Conversion Between Mass and Molar Fraction (Fluid Phase)"
+		zw = z;
+		
+		"Conversion Between Mass and Molar Flow (Fluid Phase)"
+		Fw = F * 'kg/kmol';
+	else
+		"Average Molar Weight (Fluid Phase)"
+		Mw = sum(z * M);
+		
+		"Conversion Between Mass and Molar Fraction (Fluid Phase)"
+		zw * Mw = z * M * sum(z);
+		
+		"Conversion Between Mass and Molar Flow (Fluid Phase)"
+		Fw = F * Mw;
+	end
+	
+end
+
+Model fluid2 as stream
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "Fluid phase of the main stream";
+	Info = 
+	"== GENERAL ==
+	This is the model of the fluid part of the main stream.
+	In addition to the variables already present in the stream model, there are mass flow rate and mass fraction variables";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS	
+outer PP		as Plugin		(Brief = "External Physical Properties (Fluid Phase)", Type="PP");
+	M(NComp)  	as molweight 	(Brief = "Component Mol Weight (Fluid Phase), Vector Size = NComp", Protected=true);
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	M = PP.MolecularWeight();
+
+#*------------------------------------------------------------------
+* Declaracao de variaveis
+*-------------------------------------------------------------------*#
+
+	VARIABLES
+	Fw as flow_mass (Brief = "Fluid Phase Mass Flow", Symbol = "F_w");
+	zw(NComp) as fraction  (Brief = "Fluid Phase Mass Fraction, Vector Size = NComp", Symbol = "z_w");
+#	Mw as molweight	(Brief = "Average Molar Weight", Symbol = "M_w");
+	Mw as Real (Brief = "Molar Weight", Default=75, Lower=1, Upper=1e3, final Unit = 'kg/kmol');
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+	if F equal 0 * 'mol/s' then
+		"Average Molar Weight (Solid Phase)"
+		#Mw = 10 * 'kg/kmol';
+		Mw=sum((z * M));		
+		
+		
+		"Conversion Between Mass and Molar Fraction (Solid Phase)"
+		#zw = z;
+		zw * Mw = z * M;
+		
+		"Conversion Between Mass and Molar Flow (Solid Phase)"
+		#Fw = F * 'kg/kmol';
+		Fw = 0 *'kg/h';
+
+	else
+		"Average Molar Weight (Fluid Phase)"
+		Mw = sum(z * M);
+		
+		"Conversion Between Mass and Molar Fraction (Fluid Phase)"
+		#zw * Mw = z * M * sum(z);
+		#zw * Mw = z * M;
+
+		zw*Fw=z*F*M;		
+		
+		"Conversion Between Mass and Molar Flow (Fluid Phase)"
+		Fw = F * Mw;
+	end
+	
+end
+
+
+Model solid
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "Solid phase of the main stream";
+	Info = 
+	"== GENERAL ==
+	This is the model of the solid part of the main stream.";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+outer 	PPS	 		as Plugin		(Brief = "External Physical Properties (Fluid Phase)", Type="PP");
+outer 	NCompS 		as Integer 		(Brief = "Number of Chemical Components for the Solid Phase", Lower = 1); 
+		M(NCompS) 	as molweight 	(Brief = "Component Mol Weight (Solid Phase), Vector Size = NCompS", Protected=true);
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	M = PPS.MolecularWeight();
+
+#*------------------------------------------------------------------
+* Declaracao de variaveis
+*-------------------------------------------------------------------*#
+
+	VARIABLES
+	F  			as flow_mol 	(Brief = "Solid Phase Molar Flow", Symbol = "F");
+	Fw 			as flow_mass 	(Brief = "Solid Phase Mass Flow", Symbol = "F_w");
+	z(NCompS)  	as fraction 	(Brief = "Solid Phase Molar Fraction, Vector Size = NCompS", Symbol = "z");
+	zw(NCompS) 	as fraction  	(Brief = "Solid Phase Mass Fraction, Vector Size = NCompS", Symbol = "z_w");
+	h 			as enth_mol 	(Brief = "Stream Enthalpy", Protected = true);
+	Mw 			as molweight	(Brief = "Average Molar Weight", Symbol = "M_w");
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+
+	if Fw equal 0 * 'kg/h' then
+		"Average Molar Weight (Solid Phase)"
+		Mw = 10 * 'kg/kmol';
+		
+		"Conversion Between Mass and Molar Fraction (Solid Phase)"
+		zw = z;
+		
+		"Conversion Between Mass and Molar Flow (Solid Phase)"
+		Fw = F * 'kg/kmol';
+	else
+		"Average Molar Weight (Solid Phase)"
+		Mw = max([sum(z * M),1*'kg/kmol']);
+
+		
+		"Conversion Between Mass and Molar Fraction (Solid Phase)"
+		zw * Mw = z * M * sum(z);
+		
+		
+		"Conversion Between Mass and Molar Flow (Solid Phase)"
+		Fw = F * Mw;
+	end
+	
+end 
+
+Model solid2
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "Solid phase of the main stream";
+	Info = 
+	"== GENERAL ==
+	This is the model of the solid part of the main stream.";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+outer 	PPS	 		as Plugin		(Brief = "External Physical Properties (Fluid Phase)", Type="PP");
+outer 	NCompS 		as Integer 		(Brief = "Number of Chemical Components for the Solid Phase", Lower = 1); 
+		M(NCompS) 	as molweight 	(Brief = "Component Mol Weight (Solid Phase), Vector Size = NCompS", Protected=true);
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	M = PPS.MolecularWeight();
+
+#*------------------------------------------------------------------
+* Declaracao de variaveis
+*-------------------------------------------------------------------*#
+
+	VARIABLES
+	F  			as flow_mol 	(Brief = "Solid Phase Molar Flow", Symbol = "F");
+	Fw 			as flow_mass 	(Brief = "Solid Phase Mass Flow", Symbol = "F_w");
+	z(NCompS)  	as fraction 	(Brief = "Solid Phase Molar Fraction, Vector Size = NCompS", Symbol = "z");
+	zw(NCompS) 	as fraction  	(Brief = "Solid Phase Mass Fraction, Vector Size = NCompS", Symbol = "z_w");
+	h 			as enth_mol 	(Brief = "Stream Enthalpy", Protected = true);
+	#Mw 			as molweight	(Brief = "Average Molar Weight", Symbol = "M_w");
+	Mw as Real (Brief = "Molar Weight", Default=75, Lower=1, Upper=1e3, final Unit = 'kg/kmol');
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+
+	if F equal 0 * 'mol/s' then
+		"Average Molar Weight (Solid Phase)"
+		#Mw = 10 * 'kg/kmol';
+		Mw=sum((z * M));		
+		
+		"Conversion Between Mass and Molar Fraction (Solid Phase)"
+		#zw = z;
+		zw * Mw = z * M;
+		
+		"Conversion Between Mass and Molar Flow (Solid Phase)"
+		#Fw = F * 'kg/kmol';
+		Fw = 0 *'kg/h';
+	else
+		"Average Molar Weight (Solid Phase)"
+		#Mw = max([sum(z * M),1*'kg/kmol']);
+		Mw=sum((z * M));
+		
+		"Conversion Between Mass and Molar Fraction (Solid Phase)"
+		#zw * Mw = z * M * sum(z);
+		zw*Fw=z*F*M;
+		#zw * Mw = z * M;
+		
+		"Conversion Between Mass and Molar Flow (Solid Phase)"
+		Fw = F * Mw;
+	end
+	
+end 
+
+Model total
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "Totals of main stream mixing solid and fluid phases";
+	Info = 
+	"== GENERAL ==
+	This is the model of the totals in the main stream mixing solid and fluid phases.";
+	
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+outer	NCompT		as Integer (Brief = "Number of Chemical Components", Lower = 1); 
+outer	NComp		as Integer (Brief = "Number of Chemical Components", Lower = 1); 
+outer	NCompS		as Integer (Brief = "Number of Chemical Components", Lower = 1); 
+
+#*------------------------------------------------------------------
+* Declaracao de variaveis
+*-------------------------------------------------------------------*#
+
+	VARIABLES
+	F  as flow_mol (Brief = "Total Molar Flow", Symbol = "F");
+	Fw as flow_mass (Brief = "Total Mass Flow", Symbol = "F_w");
+	#z(NCompT)  as fraction (Brief = "Total Molar Fraction, Vector Size = NCompT", Symbol = "z");
+	z(NComp + NCompS)  as fraction (Brief = "Total Molar Fraction, Vector Size = NCompT", Symbol = "z");
+	zw(NComp + NCompS) as fraction  (Brief = "Total Mass Fraction, Vector Size = NCompT", Symbol = "z_w");
+	
+end 
+
+Model main_stream
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "General matter stream containing solid and fluid phase";
+	Info =
+"== GENERAL ==
+	This stream should be used when solids are present.
+	The stream was separated in two phases: Fluid and Solid.
+	Both phases have variables for the flow rate (both mass and molar), enthalpy (molar) and mass and molar fractions.
+	Additionaly, the total flow rate (mass and molar) and mass and molar fractions are also calculated.
+	Note that the enthalpy of the solid phase is calculated through a call to the VapourEnthalpy method of VRTherm.
+
+== ASSUMPTIONS ==
+	This model does not consider equilibrium between the solid phase and the fluid phase (both liquid and vapour).
+	Therefore, if a phase transition involving the solid phase occours, the user should represent it as a 'chemical reaction'.
+	Note that for the phase transition to be represented, the compounds involved should be present both in the fluid and solid phases. 
+";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+	NCompT		as Integer (Brief = "Number of Chemical Components for the Solid Phase", Lower = 1); 
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	NCompT = Solid.NCompS + Fluid.NComp;
+	#NCompT = 3;
+
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+	Fluid as fluid 			(Brief = "Fluid phase of the stream", Symbol = "^{Fluid}");
+	Solid as solid			(Brief = "Solid phase of the stream", Symbol = "^{Solid}");
+	Total as total			(Brief = "Overall stream", Symbol = "^{Total}");
+	T as temperature 		(Brief = "Stream Temperature");
+	P as pressure 			(Brief = "Stream Pressure");
+	v as fraction			(Brief = "Vapour fraction of the fluid phase");
+	
+	EQUATIONS
+	"Thermical equilibrium between fluid and solid phases"
+	T = Fluid.T;
+	
+	"Mechanical equilibrium between fluid and solid phases"	
+	P = Fluid.P;
+	
+	"Vapour fraction"
+	v = Fluid.v;
+	
+	"Calculation of mass flow"
+	Total.Fw = Solid.Fw + Fluid.Fw;
+	
+	"Calculation of molar flow"
+	Total.F = Solid.F + Fluid.F;
+
+	if Total.Fw equal 0*'kg/s' then
+		
+		"Calculation of zw for the Fluid Phase (NComp)"
+		Total.zw(1) = 1;
+		
+		"Calculation of zw for the Solid Phase (NComp)"
+		Total.zw(2:Fluid.NComp+Solid.NCompS) = 0;
+		
+		"Calculation of z for the Fluid Phase (NComp)"
+		Total.z(1) = 1;
+		
+		"Calculation of z for the Solid Phase (NComp)"
+		Total.z(2:Fluid.NComp+Solid.NCompS) = 0;
+		
+	else
+	
+		"Calculation of zw for the Fluid Phase (NComp)"
+		Total.zw(1:Fluid.NComp) * Total.Fw  = Fluid.zw * Fluid.Fw;
+		
+		"Calculation of zw for the Solid Phase (NComp)"
+		Total.zw([Fluid.NComp+1:Fluid.NComp+Solid.NCompS]) * Total.Fw = Solid.zw * Solid.Fw;
+		
+		"Calculation of z for the Fluid Phase (NComp)"
+		Total.F * Total.z(1:Fluid.NComp) = Fluid.F * Fluid.z;
+		
+		"Calculation of z for the Solid Phase (NComp)"
+		Total.F * Total.z([Fluid.NComp+1:Solid.NCompS + Fluid.NComp]) = Solid.F * Solid.z;
+		
+	end
+
+end 
+
+Model main_stream2
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "General matter stream containing solid and fluid phase";
+	Info =
+"== GENERAL ==
+	This stream should be used when solids are present.
+	The stream was separated in two phases: Fluid and Solid.
+	Both phases have variables for the flow rate (both mass and molar), enthalpy (molar) and mass and molar fractions.
+	Additionaly, the total flow rate (mass and molar) and mass and molar fractions are also calculated.
+	Note that the enthalpy of the solid phase is calculated through a call to the VapourEnthalpy method of VRTherm.
+
+== ASSUMPTIONS ==
+	This model does not consider equilibrium between the solid phase and the fluid phase (both liquid and vapour).
+	Therefore, if a phase transition involving the solid phase occours, the user should represent it as a 'chemical reaction'.
+	Note that for the phase transition to be represented, the compounds involved should be present both in the fluid and solid phases. 
+";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+	NCompT		as Integer (Brief = "Number of Chemical Components for the Solid Phase", Lower = 1); 
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	NCompT = Solid.NCompS + Fluid.NComp;
+
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+	Fluid as fluid2 		    (Brief = "Fluid phase of the stream", Symbol = "^{Fluid}");
+	Solid as solid2				(Brief = "Solid phase of the stream", Symbol = "^{Solid}");
+	Total as total				(Brief = "Overall stream", Symbol = "^{Total}");
+	T as temperature 			(Brief = "Stream Temperature");
+	P as pressure 				(Brief = "Stream Pressure");
+	v as fraction				(Brief = "Vapour fraction of the fluid phase");
+	
+	EQUATIONS
+	"Thermical equilibrium between fluid and solid phases"
+	T = Fluid.T;
+	
+	"Mechanical equilibrium between fluid and solid phases"	
+	P = Fluid.P;
+	
+	"Vapour fraction"
+	v = Fluid.v;
+	
+	"Calculation of mass flow"
+	Total.Fw = Solid.Fw + Fluid.Fw;
+		
+	
+	"Calculation of molar flow"
+	Total.F = Solid.F + Fluid.F;
+
+	if Total.Fw equal 0*'kg/s' then
+		
+		"Calculation of zw for the Fluid Phase (NComp)"
+		Total.zw(1) = 1;
+		
+		"Calculation of zw for the Solid Phase (NComp)"
+		Total.zw(2:Fluid.NComp+Solid.NCompS) = 0;
+		
+		"Calculation of z for the Fluid Phase (NComp)"
+		Total.z(1) = 1;
+		
+		"Calculation of z for the Solid Phase (NComp)"
+		Total.z(2:Fluid.NComp+Solid.NCompS) = 0;
+		
+	else
+	
+		"Calculation of zw for the Fluid Phase (NComp)"
+		Total.zw(1:Fluid.NComp) * Total.Fw  = Fluid.zw * Fluid.Fw;
+		
+		"Calculation of zw for the Solid Phase (NCompS)"
+		Total.zw([Fluid.NComp+1:Fluid.NComp+Solid.NCompS]) * Total.Fw = Solid.zw * Solid.Fw;
+		
+		"Calculation of z for the Fluid Phase (NComp)"
+		Total.F * Total.z(1:Fluid.NComp) = Fluid.F * Fluid.z;
+		
+		"Calculation of z for the Solid Phase (NCompS)"
+		Total.F * Total.z([Fluid.NComp+1:NCompT]) = Solid.F * Solid.z;
+		
+	end
+
+end 
+
+Model main_stream_PH as main_stream
+	ATTRIBUTES
+	Brief = "Main Stream With Built-in Flash Calculation";
+	Info = 
+"== GENERAL ==
+	This model should be used when the vaporization fraction
+	is unknown.
+	
+	The built-in flash calculation will determine the stream
+	state as a function of the overall composition '''z''', the
+	pressure '''P''' and the enthalpy '''h'''.
+	
+	Additionally, the liquid composition '''x''' and the vapor
+	composition '''y''' are calculated.	
+";
+	Pallete = false;
+	
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+	x(Fluid.NComp) as fraction	(Brief = "Liquid Molar Fraction",Hidden=true);
+	y(Fluid.NComp) as fraction	(Brief = "Vapour Molar Fraction",Hidden=true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+	"Flash Calculation, array = [v, x, y]"
+	[v, x, y] = Fluid.PP.FlashPH(P, Fluid.h, Fluid.z);
+	
+	"Fluid Phase Molar Enthalpy"
+	Fluid.h = (1-v)*Fluid.PP.LiquidEnthalpy(T, P, x) + v*Fluid.PP.VapourEnthalpy(T, P, y);
+	
+	"Solid Phase Molar Enthalpy"
+	Solid.h = Solid.PPS.VapourEnthalpy(T, P, Solid.z);
+	
+end
+
+Model main_stream_eq as main_stream
+
+	ATTRIBUTES
+	Brief = "Main Stream With Specified State";
+	Info = 
+"== GENERAL ==
+	This stream should be used when the state is known: Liquid or Vapour.
+	This will determine the VRTherm method used to calculate the fluid phase enthalpy.
+";
+	Pallete = false;
+	
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+	
+	PARAMETERS
+	Phase as Switcher (Brief = "Stream Phase for enthalpy calculation", Valid = ["Liquid", "Vapour"], Default = "Liquid");
+
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+
+	switch Phase
+		
+		case "Liquid":
+	
+		"Fluid Phase Molar Enthalpy"
+		Fluid.h = Fluid.PP.LiquidEnthalpy(T, P, Fluid.z);
+		
+		"Vapour fraction"
+		v = 0;
+		
+		case "Vapour":
+		
+		"Fluid Phase Molar Enthalpy"
+		Fluid.h = Fluid.PP.VapourEnthalpy(T, P, Fluid.z);
+		
+		"Vapour fraction"
+		v = 1;
+		
+	end
+
+	"Solid Phase Molar Enthalpy"
+	Solid.h = Solid.PPS.VapourEnthalpy(T, P, Solid.z);
+	
+end
+
+Model main_stream_eq2 as main_stream2
+
+	ATTRIBUTES
+	Brief = "Main Stream With Specified State";
+	Info = 
+"== GENERAL ==
+	This stream should be used when the state is known: Liquid or Vapour.
+	This will determine the VRTherm method used to calculate the fluid phase enthalpy.
+";
+	Pallete = false;
+	
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+	
+	PARAMETERS
+	Phase as Switcher (Brief = "Stream Phase for enthalpy calculation", Valid = ["Liquid", "Vapour"], Default = "Liquid");
+
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+
+	switch Phase
+		
+		case "Liquid":
+	
+		"Fluid Phase Molar Enthalpy"
+		Fluid.h = Fluid.PP.LiquidEnthalpy(T, P, Fluid.z);
+		
+		"Vapour fraction"
+		v = 0;
+		
+		case "Vapour":
+		
+		"Fluid Phase Molar Enthalpy"
+		Fluid.h = Fluid.PP.VapourEnthalpy(T, P, Fluid.z);
+		
+		"Vapour fraction"
+		v = 1;
+		
+	end
+
+	"Solid Phase Molar Enthalpy"
+	Solid.h = Solid.PPS.VapourEnthalpy(T, P, Solid.z);
+	
+end
+
+Model main_sourceR
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/massR";
+	Brief = "Main Stream Source";
+	Info = 
+"== GENERAL ==
+	This model should be used for boundary streams.
+	Usually these streams are known and come from other process
+	units.
+
+== SPECIFY ==
+* Molar or mass flow (for both fluid and solid phases);
+* Temperature;
+* Pressure;
+* Molar or mass composition (for both fluid and solid phases).
+	
+== ADITIONAL INFORMATION ==
+* Mass density (fluid phase);
+* Mass and molar flow;
+* Mass and molar compostions;
+* Specific volume (fluid phase);
+* Vapour fraction (fluid phase);
+* Volumetric flow (fluid phase);
+* Liquid and Vapour compositions (fluid phase).
+";
+	
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	ValidPhases				as Switcher			(Brief = "Valid Phases for Flash Calculation", Valid = ["Vapour-Only", "Liquid-Only","Vapour-Liquid"], Default="Vapour-Liquid");
+	CompositionBasis		as Switcher			(Brief = "Molar or Mass Composition", Valid = ["Molar", "Mass"], Default="Molar");	
+
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+
+out Outlet 									as main_stream		(Brief = "Outlet Stream", PosY = 0.5256, PosX = 1.0, Symbol="_{out}", Protected=true);	
+	Fluid									as fluid;
+	Solid									as solid;
+	
+	CompositionOfFluid(Fluid.NComp) 		as positive			(Brief = "Stream Composition (Fluid Phase)");
+	SumOfCompositionOfFluid					as positive			(Brief = "Sum of Stream Composition (Fluid Phase)", Protected=true);
+
+	CompositionOfSolid(Solid.NCompS)		as positive			(Brief = "Stream Composition (Solid Phase)");
+	SumOfCompositionOfSolid					as positive			(Brief = "Sum of Stream Composition (Solid Phase)", Protected=true);
+
+	Fvol	     							as flow_vol			(Brief = "Volumetric flow (Fluid phase)");
+	T 										as temperature		(Brief = "Stream Temperature");
+	T_Cdeg									as Real				(Brief = "Temperature in Celsius", Lower=-250, Upper=5000);
+	P 										as pressure			(Brief = "Stream Pressure");
+	
+	x(Fluid.NComp) 							as fraction			(Brief = "Liquid Molar Fraction", Hidden=true);
+	y(Fluid.NComp) 							as fraction			(Brief = "Vapour Molar Fraction", Hidden=true);
+	
+	vm 										as volume_mol 		(Brief = "Molar Volume (Fluid Phase)", Protected=true);	
+	rho										as dens_mass		(Brief = "Stream Mass Density (Fluid Phase)", Protected=true);
+	rhom									as dens_mol			(Brief = "Stream Molar Density (Fluid Phase)", Protected=true);
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+
+	switch CompositionBasis
+
+		case "Molar":
+		"Fluid Phase Molar Composition"
+		Fluid.z = CompositionOfFluid/sum(CompositionOfFluid);
+		
+		"Solid Phase Molar Composition"
+		Solid.z = CompositionOfSolid/sum(CompositionOfSolid);
+
+		case "Mass":
+		"Fluid Phase Mass Composition"
+		Fluid.zw = CompositionOfFluid/sum(CompositionOfFluid);
+		
+		"Solid Phase Mass Composition"
+		Solid.zw = CompositionOfSolid/sum(CompositionOfSolid);
+
+	end
+
+	switch ValidPhases
+		
+		case "Liquid-Only":
+
+				"Vapour Fraction"
+				Fluid.v = 0;
+
+				"Liquid Composition"
+				x = Fluid.z;
+
+				"Vapour Composition"
+				y = Fluid.z;
+
+				"Fluid Phase Molar Enthalpy"
+				Fluid.h = Fluid.PP.LiquidEnthalpy(T, P, x);
+
+				"Molar Volume"
+				vm = Fluid.PP.LiquidVolume(T, P, Fluid.z);
+
+		case "Vapour-Only":
+
+			"	Vapor Fraction"
+				Fluid.v = 1;
+
+				"Liquid Composition"
+				x = Fluid.z;
+
+				"Vapour Composition"
+				y = Fluid.z;
+
+				"Fluid Phase Molar Enthalpy"
+				Fluid.h = Fluid.PP.VapourEnthalpy(T, P, y);
+
+				"Fluid Phase Molar Volume"
+				vm = Fluid.PP.VapourVolume(T, P, y);
+
+		case "Vapour-Liquid":
+
+			"Flash Calculation (Fluid Phase), array = [Outlet.v, x, y]"
+			[Fluid.v, x, y] = Fluid.PP.Flash(T, P, Fluid.z);
+
+			"Fluid Phase Molar Enthalpy"
+			Fluid.h = (1-Fluid.v)*Fluid.PP.LiquidEnthalpy(T, P, x) + Fluid.v*Fluid.PP.VapourEnthalpy(T, P, y);
+
+			"Molar Volume for the Fluid Phase"
+			vm = (1-Fluid.v)*Fluid.PP.LiquidVolume(T, P, x) + Fluid.v*Fluid.PP.VapourVolume(T, P, y);
+
+	end
+
+	"Solid Phase Molar Enthalpy"
+	Solid.h = Solid.PPS.VapourEnthalpy(T, P, Solid.z);
+
+	"Sum of Composition for the Fluid Phase"
+	SumOfCompositionOfFluid = sum(CompositionOfFluid);
+	
+	"Sum of Composition for the Solid Phase"
+	SumOfCompositionOfSolid = sum(CompositionOfSolid);
+
+	"Fluid Phase Molar Density"
+	rhom * vm = 1;
+
+	"Mass or Molar Density (Fluid Phase)"
+	rhom * Fluid.Mw = rho;
+
+	"Volumetric Flow (Fluid Phase)"
+	Fvol = Fluid.F * vm ;
+	
+	"Temperature in Celsius Degree"
+	T_Cdeg = T/'K' - 273.15;
+	
+	"Shortcut for temperature"
+	T = Outlet.T;
+	
+	"Shortcut for pressure"
+	P = Outlet.P;
+	
+	"Shortcut for mass flow of fluid"
+	Fluid.Fw = Outlet.Fluid.Fw;
+	
+	"Shortcut for mass fraction of fluid"
+	Fluid.zw = Outlet.Fluid.zw;
+	
+	"Shortcut for temperature of fluid"
+	Fluid.T = Outlet.Fluid.T;
+	
+	"Shortcut for pressure of fluid"
+	Fluid.P = Outlet.Fluid.P;
+	
+	"Shortcut for enthalpy of fluid"
+	Fluid.h = Outlet.Fluid.h;
+	
+	"Shortcut for vapour fraction fluid"
+	Fluid.v = Outlet.Fluid.v;
+	
+	"Shortcut for mass flow of solid"
+	Solid.Fw = Outlet.Solid.Fw;
+	
+	"Shortcut for mass fraction of solid"
+	Solid.zw = Outlet.Solid.zw;
+	
+	"Shortcut for enthalpy of solid"
+	Solid.h = Outlet.Solid.h;
+	
+end
+
+Model main_sourceL
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/massL";
+	Brief = "Solid Stream Source";
+	Info = 
+"== GENERAL ==
+	This model should be used for boundary streams.
+	Usually these streams are known and come from other process
+	units.
+
+== SPECIFY ==
+* Molar or mass flow (for both fluid and solid phases);
+* Temperature;
+* Pressure;
+* Molar or mass composition (for both fluid and solid phases).
+	
+== ADITIONAL INFORMATION ==
+* Mass density (fluid phase);
+* Mass and molar flow;
+* Mass and molar compostions;
+* Specific volume (fluid phase);
+* Vapour fraction (fluid phase);
+* Volumetric flow (fluid phase);
+* Liquid and Vapour compositions (fluid phase).
+";
+	
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+
+	PARAMETERS
+	ValidPhases				as Switcher			(Brief = "Valid Phases for Flash Calculation", Valid = ["Vapour-Only", "Liquid-Only","Vapour-Liquid"], Default="Vapour-Liquid");
+	CompositionBasis		as Switcher			(Brief = "Molar or Mass Composition", Valid = ["Molar", "Mass"], Default="Molar");	
+
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+
+out Outlet 									as main_stream		(Brief = "Outlet Stream", PosY = 0.5256, PosX = 0.0, Symbol="_{out}", Protected=true);	
+	Fluid									as fluid;
+	Solid									as solid;
+	
+	CompositionOfFluid(Fluid.NComp) 		as positive			(Brief = "Stream Composition (Fluid Phase)");
+	SumOfCompositionOfFluid					as positive			(Brief = "Sum of Stream Composition (Fluid Phase)", Protected=true);
+
+	CompositionOfSolid(Solid.NCompS)		as positive			(Brief = "Stream Composition (Solid Phase)");
+	SumOfCompositionOfSolid					as positive			(Brief = "Sum of Stream Composition (Solid Phase)", Protected=true);
+
+	Fvol	     							as flow_vol			(Brief = "Volumetric flow (Fluid phase)");
+	T 										as temperature		(Brief = "Stream Temperature");
+	T_Cdeg									as Real				(Brief = "Temperature in Celsius", Lower=-250, Upper=5000);
+	P 										as pressure			(Brief = "Stream Pressure");
+	
+	x(Outlet.Fluid.NComp) 					as fraction			(Brief = "Liquid Molar Fraction", Hidden=true);
+	y(Outlet.Fluid.NComp) 					as fraction			(Brief = "Vapour Molar Fraction", Hidden=true);
+	
+	vm 										as volume_mol 		(Brief = "Molar Volume (Fluid Phase)", Protected=true);	
+	rho										as dens_mass		(Brief = "Stream Mass Density (Fluid Phase)", Protected=true);
+	rhom									as dens_mol			(Brief = "Stream Molar Density (Fluid Phase)", Protected=true);
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+	EQUATIONS
+
+	switch CompositionBasis
+
+		case "Molar":
+		"Fluid Phase Molar Composition"
+		Fluid.z = CompositionOfFluid/sum(CompositionOfFluid);
+		
+		"Solid Phase Molar Composition"
+		Solid.z = CompositionOfSolid/sum(CompositionOfSolid);
+
+		case "Mass":
+		"Fluid Phase Mass Composition"
+		Fluid.zw = CompositionOfFluid/sum(CompositionOfFluid);
+		
+		"Solid Phase Mass Composition"
+		Solid.zw = CompositionOfSolid/sum(CompositionOfSolid);
+
+	end
+
+	switch ValidPhases
+		
+		case "Liquid-Only":
+
+				"Vapour Fraction"
+				Fluid.v = 0;
+
+				"Liquid Composition"
+				x = Fluid.z;
+
+				"Vapour Composition"
+				y = Fluid.z;
+
+				"Fluid Phase Molar Enthalpy"
+				Fluid.h = Fluid.PP.LiquidEnthalpy(T, P, x);
+
+				"Molar Volume"
+				vm = Fluid.PP.LiquidVolume(T, P, Fluid.z);
+
+		case "Vapour-Only":
+
+			"	Vapor Fraction"
+				Fluid.v = 1;
+
+				"Liquid Composition"
+				x = Fluid.z;
+
+				"Vapour Composition"
+				y = Fluid.z;
+
+				"Fluid Phase Molar Enthalpy"
+				Fluid.h = Fluid.PP.VapourEnthalpy(T, P, y);
+
+				"Fluid Phase Molar Volume"
+				vm = Fluid.PP.VapourVolume(T, P, y);
+
+		case "Vapour-Liquid":
+
+			"Flash Calculation (Fluid Phase), array = [Outlet.v, x, y]"
+			[Fluid.v, x, y] = Fluid.PP.Flash(T, P, Fluid.z);
+
+			"Fluid Phase Molar Enthalpy"
+			Fluid.h = (1-Fluid.v)*Fluid.PP.LiquidEnthalpy(T, P, x) + Fluid.v*Fluid.PP.VapourEnthalpy(T, P, y);
+
+			"Molar Volume for the Fluid Phase"
+			vm = (1-Fluid.v)*Fluid.PP.LiquidVolume(T, P, x) + Fluid.v*Fluid.PP.VapourVolume(T, P, y);
+
+	end
+
+	"Solid Phase Molar Enthalpy"
+	Solid.h = Solid.PPS.VapourEnthalpy(T, P, Solid.z);
+
+	"Sum of Composition for the Fluid Phase"
+	SumOfCompositionOfFluid = sum(CompositionOfFluid);
+	
+	"Sum of Composition for the Solid Phase"
+	SumOfCompositionOfSolid = sum(CompositionOfSolid);
+
+	"Fluid Phase Molar Density"
+	rhom * vm = 1;
+
+	"Mass or Molar Density (Fluid Phase)"
+	rhom * Fluid.Mw = rho;
+
+	"Volumetric Flow (Fluid Phase)"
+	Fvol = Fluid.F * vm ;
+	
+	"Temperature in Celsius Degree"
+	T_Cdeg = T/'K' - 273.15;
+	
+	"Shortcut for temperature"
+	T = Outlet.T;
+	
+	"Shortcut for pressure"
+	P = Outlet.P;
+	
+	"Shortcut for mass flow of fluid"
+	Fluid.Fw = Outlet.Fluid.Fw;
+	
+	"Shortcut for mass fraction of fluid"
+	Fluid.zw = Outlet.Fluid.zw;
+	
+	"Shortcut for temperature of fluid"
+	Fluid.T = Outlet.Fluid.T;
+	
+	"Shortcut for pressure of fluid"
+	Fluid.P = Outlet.Fluid.P;
+	
+	"Shortcut for enthalpy of fluid"
+	Fluid.h = Outlet.Fluid.h;
+	
+	"Shortcut for vapour fraction fluid"
+	Fluid.v = Outlet.Fluid.v;
+	
+	"Shortcut for mass flow of solid"
+	Solid.Fw = Outlet.Solid.Fw;
+	
+	"Shortcut for mass fraction of solid"
+	Solid.zw = Outlet.Solid.zw;
+	
+	"Shortcut for enthalpy of solid"
+	Solid.h = Outlet.Solid.h;
+	
+end
+
+Model main_sinkR
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/massR";
+	Brief = "Main Stream Sink";
+	Info = 
+"== GENERAL ==
+	This model should be used for boundary streams when no additional
+	information about the stream is desired.
+";
+	
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+
+in 	Inlet 									as main_stream		(Brief = "Inlet Stream", PosY = 0.5256, PosX = 0.0, Symbol="_{in}", Protected=true);	
+	
+end
+
+Model main_sinkL
+	ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/massL";
+	Brief = "Solid Stream Sink";
+	Info = 
+"== GENERAL ==
+	This model should be used for boundary streams when no additional
+	information about the stream is desired.
+";
+
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+
+	VARIABLES
+
+in Inlet 									as main_stream		(Brief = "Inlet Stream", PosY = 0.5256, PosX = 1.0, Symbol="_{in}", Protected=true);	
+	
+end
+
+FlowSheet teste_main_source
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#	
+	
+	DEVICES
+	SS101 as main_sourceR;
+	
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+	
+	PARAMETERS
+	PP as Plugin	(Brief = "External Physical Properties", 
+		Type="PP",
+		Project = "Flowsheets/v2_2/Fluid_v2_2.vrtherm" 
+	);
+	PPS as Plugin	(Brief = "External Physical Properties", 
+		Type="PP",
+		Project = "Flowsheets/v2_2/Solid_v2_2.vrtherm"
+	);
+	NComp as Integer (Brief = "Number of chemical components");
+	NCompS as Integer (Brief = "Number of chemical components in the solid phase");
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+	
+	SET
+	NComp = PP.NumberOfComponents();
+	NCompS = PPS.NumberOfComponents();
+	SS101.CompositionBasis = "Molar";
+
+
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo
+*--------------------------------------------------------------------*#
+	
+	SPECIFY
+	SS101.Fluid.Fw = 0 * 'kg/h';
+	SS101.Solid.Fw = 0 * 'kg/h';
+	
+	SS101.T = 300 * 'K';
+	
+	SS101.P = 1 * 'atm';
+	
+	SS101.CompositionOfSolid(1) = 0.4;
+	SS101.CompositionOfSolid(2) = 0.3;
+	SS101.CompositionOfSolid(3) = 0.28;
+	SS101.CompositionOfSolid(4) = 0.02;
+	SS101.CompositionOfSolid(5:NCompS) = 0;
+	SS101.CompositionOfFluid(1) = 0.9;
+	SS101.CompositionOfFluid(2) = 0.08;
+	SS101.CompositionOfFluid(3) = 0.02;
+	SS101.CompositionOfFluid(4:NComp) = 0;
+
+#*-------------------------------------------------------------------
+* Opcoes do Solver
+*--------------------------------------------------------------------*#	
+	
+	OPTIONS
+	Dynamic = false;
+
+end
+
+FlowSheet teste_main_source_and_main_sink
+	
+#*-------------------------------------------------------------------
+* Declaracao de dispositivos (ou blocos contendo o modelo)
+*--------------------------------------------------------------------*#	
+	
+	DEVICES
+	SS101 as main_sourceR;
+	SS102 as main_sinkL;
+
+#*-------------------------------------------------------------------
+* Conexoes entre dispositivos
+*--------------------------------------------------------------------*#	
+
+	CONNECTIONS
+	SS101.Outlet to SS102.Inlet;	
+
+#*-------------------------------------------------------------------
+#Parametros
+*--------------------------------------------------------------------*#
+	
+	PARAMETERS
+	PP as Plugin	(Brief = "External Physical Properties", 
+		Type="PP",
+		Project = "Flowsheets/v2_2/Fluid_v2_2.vrtherm" 
+	);
+	PPS as Plugin	(Brief = "External Physical Properties", 
+		Type="PP",
+		Project = "Flowsheets/v2_2/Solid_v2_2.vrtherm"
+	);
+	NComp as Integer (Brief = "Number of chemical components");
+	NCompS as Integer (Brief = "Number of chemical components in the solid phase");
+	
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+	
+	SET
+	NComp = PP.NumberOfComponents();
+	NCompS = PPS.NumberOfComponents();
+	SS101.CompositionBasis = "Molar";
+
+
+#*-------------------------------------------------------------------
+* Especifica variaveis definidas no modelo 
+*--------------------------------------------------------------------*#
+	
+	SPECIFY
+	SS101.Fluid.Fw = 0 * 'kg/h';
+	SS101.Solid.Fw = 0 * 'kg/h';
+	
+	SS101.T = 300 * 'K';
+	
+	SS101.P = 1 * 'atm';
+	
+	SS101.CompositionOfSolid(1) = 0.4;
+	SS101.CompositionOfSolid(2) = 0.3;
+	SS101.CompositionOfSolid(3) = 0.28;
+	SS101.CompositionOfSolid(4) = 0.02;
+	SS101.CompositionOfSolid(5:NCompS) = 0;
+	SS101.CompositionOfFluid(1) = 0.9;
+	SS101.CompositionOfFluid(2) = 0.08;
+	SS101.CompositionOfFluid(3) = 0.02;
+	SS101.CompositionOfFluid(4:NComp) = 0;
+
+#*-------------------------------------------------------------------
+* Opcoes do Solver
+*--------------------------------------------------------------------*#	
+	
+	OPTIONS
+	Dynamic = false;
+
+end
+
+Model simple_fluid as stream
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "Simple Stream of Fluid phase of the main stream";
+	Info = 
+	"== GENERAL ==
+	This is the model of the fluid part of the main stream.
+	In addition to the variables already present in the stream model, there are mass flow rate and mass fraction variables";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS	
+outer PP		as Plugin		(Brief = "External Physical Properties (Fluid Phase)", Type="PP");
+	M(NComp)  	as molweight 	(Brief = "Component Mol Weight (Fluid Phase), Vector Size = NComp", Protected=true);
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	M = PP.MolecularWeight();
+	
+end
+
+Model simple_solid
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "Solid phase of the main stream";
+	Info = 
+	"== GENERAL ==
+	This is the model of the solid part of the main stream.";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+outer 	PPS	 		as Plugin		(Brief = "External Physical Properties (Fluid Phase)", Type="PP");
+outer 	NCompS 		as Integer 		(Brief = "Number of Chemical Components for the Solid Phase", Lower = 1); 
+		M(NCompS) 	as molweight 	(Brief = "Component Mol Weight (Solid Phase), Vector Size = NCompS", Protected=true);
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	M = PPS.MolecularWeight();
+
+#*------------------------------------------------------------------
+* Declaracao de variaveis
+*-------------------------------------------------------------------*#
+
+	VARIABLES
+	F  			as flow_mol 	(Brief = "Solid Phase Molar Flow", Symbol = "F");
+	z(NCompS)  	as fraction 	(Brief = "Solid Phase Molar Fraction, Vector Size = NCompS", Symbol = "z");
+	h 			as enth_mol 	(Brief = "Stream Enthalpy", Protected = true);
+	
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+	
+
+	
+end 
+
+Model simple_total
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "Totals of main stream mixing solid and fluid phases";
+	Info = 
+	"== GENERAL ==
+	This is the model of the totals in the main stream mixing solid and fluid phases.";
+	
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+outer	NCompT		as Integer (Brief = "Number of Chemical Components", Lower = 1); 
+
+#*------------------------------------------------------------------
+* Declaracao de variaveis
+*-------------------------------------------------------------------*#
+
+	VARIABLES
+	F  as flow_mol (Brief = "Total Molar Flow", Symbol = "F");
+	z(NCompT)  as fraction (Brief = "Total Molar Fraction, Vector Size = NCompT", Symbol = "z");
+	
+end 
+
+
+Model simple_main_stream
+	
+	ATTRIBUTES
+	Pallete = false;
+	Brief = "General matter stream containing solid and fluid phase";
+	Info =
+"== GENERAL ==
+	This stream should be used when solids are present.
+	The stream was separated in two phases: Fluid and Solid.
+	Both phases have variables for the flow rate (molar), enthalpy (molar) and molar fractions.
+	Additionaly, the total flow rate (mass and molar) and mass and molar fractions are also calculated.
+	Note that the enthalpy of the solid phase is calculated through a call to the VapourEnthalpy method of VRTherm.
+
+== ASSUMPTIONS ==
+	This model does not consider equilibrium between the solid phase and the fluid phase (both liquid and vapour).
+	Therefore, if a phase transition involving the solid phase occours, the user should represent it as a 'chemical reaction'.
+	Note that for the phase transition to be represented, the compounds involved should be present both in the fluid and solid phases. 
+";
+
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+
+	PARAMETERS
+	NCompT		as Integer (Brief = "Number of Chemical Components for the Solid Phase", Lower = 1); 
+
+#*-------------------------------------------------------------------
+* Define o valor dos parametros declarados no modelo
+*--------------------------------------------------------------------*#
+
+	SET
+	NCompT = Solid.NCompS + Fluid.NComp;
+
+#*-------------------------------------------------------------------
+* Declaracao de variaveis
+*--------------------------------------------------------------------*#
+	
+	VARIABLES
+	Fluid as simple_fluid 	(Brief = "Fluid phase of the stream", Symbol = "^{Fluid}");
+	Solid as simple_solid	(Brief = "Solid phase of the stream", Symbol = "^{Solid}");
+	Total as simple_total	(Brief = "Overall stream", Symbol = "^{Total}");
+	T as temperature 		(Brief = "Stream Temperature");
+	P as pressure 			(Brief = "Stream Pressure");
+	v as fraction			(Brief = "Vapour fraction of the fluid phase");
+	
+	EQUATIONS
+	"Thermical equilibrium between fluid and solid phases"
+	T = Fluid.T;
+	
+	"Mechanical equilibrium between fluid and solid phases"	
+	P = Fluid.P;
+	
+	"Vapour fraction"
+	v = Fluid.v;
+	
+#	"Calculation of mass flow"
+#	Total.Fw = Solid.Fw + Fluid.Fw;
+	
+	"Calculation of molar flow"
+	Total.F = Solid.F + Fluid.F;
+
+	if Total.F equal 0*'mol/s' then
+		
+#		"Calculation of zw for the Fluid Phase (NComp)"
+#		Total.zw(1) = 1;
+		
+#		"Calculation of zw for the Solid Phase (NComp)"
+#		Total.zw(2:Fluid.NComp+Solid.NCompS) = 0;
+		
+		"Calculation of z for the Fluid Phase (NComp)"
+		Total.z(1) = 1;
+		
+		"Calculation of z for the Solid Phase (NComp)"
+		Total.z(2:Fluid.NComp+Solid.NCompS) = 0;
+		
+	else
+	
+#		"Calculation of zw for the Fluid Phase (NComp)"
+#		Total.zw(1:Fluid.NComp) * Total.Fw  = Fluid.zw * Fluid.Fw;
+		
+#		"Calculation of zw for the Solid Phase (NComp)"
+#		Total.zw([Fluid.NComp+1:Fluid.NComp+Solid.NCompS]) * Total.Fw = Solid.zw * Solid.Fw;
+		
+		"Calculation of z for the Fluid Phase (NComp)"
+		Total.F * Total.z(1:Fluid.NComp) = Fluid.F * Fluid.z;
+		
+		"Calculation of z for the Solid Phase (NComp)"
+		Total.F * Total.z([Fluid.NComp+1:NCompT]) = Solid.F * Solid.z;
+		
+	end
+
+end 
+
+Model simple_main_stream_eq as simple_main_stream
+
+	ATTRIBUTES
+	Brief = "Main Stream With Specified State";
+	Info = 
+"== GENERAL ==
+	This stream should be used when the state is known: Liquid or Vapour.
+	This will determine the VRTherm method used to calculate the fluid phase enthalpy.
+";
+	Pallete = false;
+	
+#*-------------------------------------------------------------------
+* Parametros
+*--------------------------------------------------------------------*#	
+	
+	PARAMETERS
+	Phase as Switcher (Brief = "Stream Phase for enthalpy calculation", Valid = ["Liquid", "Vapour"], Default = "Liquid");
+
+#*-------------------------------------------------------------------
+* Equacoes do modelo
+*--------------------------------------------------------------------*#	
+
+	EQUATIONS
+
+	switch Phase
+		
+		case "Liquid":
+	
+		"Fluid Phase Molar Enthalpy"
+		Fluid.h = Fluid.PP.LiquidEnthalpy(T, P, Fluid.z);
+		
+		"Vapour fraction"
+		v = 0;
+		
+		case "Vapour":
+		
+		"Fluid Phase Molar Enthalpy"
+		Fluid.h = Fluid.PP.VapourEnthalpy(T, P, Fluid.z);
+		
+		"Vapour fraction"
+		v = 1;
+		
+	end
+
+	"Solid Phase Molar Enthalpy"
+	Solid.h = Solid.PPS.VapourEnthalpy(T, P, Solid.z);
+	
+end
