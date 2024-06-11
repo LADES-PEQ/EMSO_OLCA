@@ -1,0 +1,136 @@
+out;Bq C-14 eq;1;Bq
+out;kBq;1000;Bq
+out;kBq Co-60 eq;1000;Bq
+out;kBq U235 eq;1000;Bq
+out;kBq U-235 eq;1000;Bq
+out;g 2,4-D eq;1;g
+out;g C6H6 eq;1;g
+out;g C7H7 eq;1;g
+out;g CFC-11 eq;1;g
+out;g CO2 eq;1;g
+out;g N eq;1;g
+out;g NOx eq;1;g
+out;g TVOC eq;1;g
+out;person.ppm.h;1;h
+out;kg;1;kg
+out;kg 1,4-DB eq;1;kg
+out;kg 1,4-DCB;1;kg
+out;kg C deficit;1;kg
+out;kg C2H3Cl eq;1;kg
+out;kg C2H4 eq;1;kg
+out;kg CFC11 eq;1;kg
+out;kg CFC-11 eq;1;kg
+out;kg CO2 eq;1;kg
+out;kg Cu eq;1;kg
+out;kg Fe eq;1;kg
+out;kg N;1;kg
+out;kg N eq;1;kg
+out;kg NMVOC;1;kg
+out;kg NMVOC eq;1;kg
+out;kg NOx eq;1;kg
+out;kg O3 eq;1;kg
+out;kg oil eq;1;kg
+out;kg P;1;kg
+out;kg P eq;1;kg
+out;kg PM10 eq;1;kg
+out;kg PM2.5 eq;1;kg
+out;kg PO4--- eq;1;kg
+out;kg PO4 P-lim;1;kg
+out;kg Sb eq;1;kg
+out;kg Si eq;1;kg
+out;kg SO2 eq;1;kg
+out;kg TEG soil;1;kg
+out;kg TEG water;1;kg
+out;liters;1;l
+out;m2;1;m^2
+out;m2a;1;m^2
+out;m2a crop eq;1;m^2
+out;m2org.arable;1;m^2
+out;m2.ppm.h;1;m^2*h
+out;PAF*m2yr;1;m^2*yr
+out;m3;1;m^3
+out;m3 air;1;m^3
+out;m3 depriv.;1;m^3
+out;m3 eq;1;m^3
+out;m3 water eq;1;m^3
+out;CTUe;1;m^3*d
+out;PAF.m3.day;1;m^3*d
+out;MJ;1;MJ
+out;MJ primary;1;MJ
+out;MJ surplus;1;MJ
+out;H+ mmole eq;0.001;mol
+out;mol H+ eq;1;mol
+out;mol N eq;1;mol
+out;molc H+ eq;1;mol
+out;molc N eq;1;mol
+out;USD2013;1;US$
+out;$ surplus;1;US$
+out;pW m^-2 yr ;1.00E-12;W/(m^2)*yr
+out;DALY;1;yr
+out;DALYs;1;yr
+out;microDALYs;1;yr
+out;PersonYr;1;yr
+out;species*year;1;yr
+out;species.yr;1;yr
+out;yr*kg CO2 eq;1;yr*kg
+out;case;1;
+out;cases;1;
+out;CTUh;1;
+out;disease inc.;1;
+out;NEX;1;
+out;person;1;
+out;points;1;
+out;PR2004;1;
+out;Pt;1;
+out;T&E count;1;
+out;UBP;1;
+out;Bq C-14-Eq;1;Bq
+out;kBq Co-60-Eq;1000;Bq
+out;kBq U235-Eq;1000;Bq
+out;kBq U-235-Eq;1000;Bq
+out;g 2,4-D-Eq;1;g
+out;g C6H6-Eq;1;g
+out;g C7H7-Eq;1;g
+out;g CFC-11-Eq;1;g
+out;g CO2-Eq;1;g
+out;g N-Eq;1;g
+out;g NOx-Eq;1;g
+out;g TVOC-Eq;1;g
+out;kg 1,4-DB-Eq;1;kg
+out;kg C2H3Cl-Eq;1;kg
+out;kg C2H4-Eq;1;kg
+out;kg CFC11-Eq;1;kg
+out;kg CFC-11-Eq;1;kg
+out;kg CO2-Eq;1;kg
+out;kg Cu-Eq;1;kg
+out;kg Fe-Eq;1;kg
+out;kg N-Eq;1;kg
+out;kg NMVOC-Eq;1;kg
+out;kg NOx-Eq;1;kg
+out;kg O3-Eq;1;kg
+out;kg oil-Eq;1;kg
+out;kg P-Eq;1;kg
+out;kg PM10-Eq;1;kg
+out;kg PM2.5-Eq;1;kg
+out;kg PO4----Eq;1;kg
+out;kg Sb-Eq;1;kg
+out;kg Si-Eq;1;kg
+out;kg SO2-Eq;1;kg
+out;m3-Eq;1;m^3
+out;m3 water-Eq;1;m^3
+out;H+ mmole-Eq;0.001;mol
+out;mol H+-Eq;1;mol
+out;mol N-Eq;1;mol
+out;molc H+-Eq;1;mol
+out;molc N-Eq;1;mol
+out;yr*kg CO2-Eq;1;yr*kg
+in;p*km;1;km
+in;kg*a;1;km*yr
+in;t*km;1;km*t
+in;m;1;m
+in;MJ;1;MJ
+in;m3;1;m^3
+in;kBq;1000;Bq
+in;m2;1;m^2
+in;m2*a;1;m^2*yr
+in;kg;1;kg
