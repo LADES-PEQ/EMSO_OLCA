@@ -558,7 +558,7 @@ VARIABLES
 	CH4_Biomass_Greet =0.000000009865*'kg/Btu';
 	N2O_Biomass_Greet =0.000000006107*'kg/Btu';
 		
-	LHV_bagasse =12381771*'Btu/ton';
+	#LHV_bagasse =12381771*'Btu/ton';
 	
 
 

@@ -258,7 +258,7 @@ FlowSheet cogeracao_baixa_basic
 	B101.stoic (:,2) = [4, 0, 0, 0, 0, 5, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0];
 	# Reaction 3:lignina(C10H11.6O3.9) + 10.95O2 --> 5.8H2O + 10CO2
 	B101.stoic (:,3) = [5.8, 0, 0, 0, 0, 10, 0, -10.95, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0];
-	B101.h = [-2804.2, -2170.9, -5243] * 'kJ/mol';
+	B101.h = [-2804.9, -2340.9, -5243.3] * 'kJ/mol';
 	B101.limit = [NComp+sol.Cellulose, NComp+sol.Hemicell, NComp+sol.Lignin];
 
 
@@ -534,6 +534,7 @@ FlowSheet LCA_cogeracao_baixa as cogeracao_baixa_basic
 
 	emissao_CO2_biogenico as Real(Unit= 'kg');
 
+	#LHV as Real;
 	
 	EQUATIONS 
 	
@@ -557,8 +558,14 @@ FlowSheet LCA_cogeracao_baixa as cogeracao_baixa_basic
 	emissao_CO2_biogenico = (B101.Gas.Total.zw(flu.CO2)*B101.Gas.Total.Fw)*time_s;
 	
 	time_s= 1*'h'; 
+	
+	
+	#LHV=(B101.LHV)/'Btu/ton';
+	greet.LHV_bagasse=B101.LHV;
 
 	SPECIFY
+	
+	
 
 	#In the same order to the Input declared in PARAMETERS
 	# SPECIFY HERE THE QUANTITIES IN KG (DIMENSIONLESS)
@@ -590,7 +597,8 @@ FlowSheet LCA_cogeracao_baixa as cogeracao_baixa_basic
 #### Simplified Economic Assessment 
 	VARIABLES
 	
-		INCOME as Real (Brief = "process income",Unit='US$');
+		#INCOME as Real (Brief = "process income",Unit='US$');
+		INCOME as Real (Brief = "process income",Unit='US$/GJ');
 		INCOME_cc as Real (Brief = "process income",Unit='US$');
 		CarbonCredit as Real (Brief = "carbon credit",Unit='US$');
 		Cbio_price as Real (Brief = "eletricity price", Default=43, Unit='US$/t');
@@ -611,6 +619,8 @@ FlowSheet LCA_cogeracao_baixa as cogeracao_baixa_basic
 
 		water_price=0.005235*'US$/kg';
 		EleGen_price=59.50*'US$/(MW*h)';
+		bagasse_price=14.58*'US$/t';
+		#bagasse_price=158.75*'US$/t';
 	
 	
 	EQUATIONS
@@ -621,11 +631,13 @@ FlowSheet LCA_cogeracao_baixa as cogeracao_baixa_basic
 		
 		INCOME_cc=EleGen_price*Wnet+vapor_price*vapor-water_price*water-bagasse_price*greet.bagasse+CarbonCredit;
 	
-		INCOME=EleGen_price*Wnet+vapor_price*vapor-water_price*water-bagasse_price*greet.bagasse;
+		INCOME=(EleGen_price*Wnet+vapor_price*vapor-water_price*water-bagasse_price*greet.bagasse)/(vapor+Wnet);
 		
 		#vapor_price=20*'US$/GJ';	
 	
-		INCOME_cc= 0 *'US$';
+		vapor_price=0*'US$/GJ';	
+	
+		#INCOME= 2.69 *'US$/GJ';
 	
 	
 
@@ -712,7 +724,9 @@ FlowSheet cogeracao_baixa_cond as cogeracao_baixa_basic
 	SPECIFY
 	
 	#Bagasse Quantity
-	S101.Outlet.Total.Fw=129057*'kg/h';
+	#S101.Outlet.Total.Fw=129057*'kg/h';
+	S101.Outlet.Total.Fw=117325*'kg/h';
+		
 	
 	#Turbine of condensation
 	wTB_cond.Outlet.P = 0.1 * 'bar';
@@ -946,11 +960,13 @@ PARAMETERS
 	lca1.output_values(1)= vapor/(1*'MJ'); #in MJ tempo em s (MW*tempo(s))
 	lca1.output_values(2)= Wnet/(1*'MJ'); #in MJ tempo em s (MW*tempo(s))
 	
+	greet.LHV_bagasse=B101.LHV;
 	
 	#### Simplified Economic Assessment 
 	VARIABLES
-	
-		INCOME as Real (Brief = "process income",Unit='US$');
+		
+		INCOME as Real (Brief = "process income",Unit='US$/GJ');
+		#INCOME as Real (Brief = "process income",Unit='US$');
 		INCOME_cc as Real (Brief = "process income",Unit='US$');
 		CarbonCredit as Real (Brief = "carbon credit",Unit='US$');
 		Cbio_price as Real (Brief = "eletricity price", Default=43, Unit='US$/t');
@@ -973,6 +989,8 @@ PARAMETERS
 
 		water_price=0.005235*'US$/kg';
 		EleGen_price=59.50*'US$/(MW*h)';
+		#bagasse_price=14.58*'US$/t';
+		bagasse_price=158.75*'US$/t';
 	
 	
 	EQUATIONS
@@ -983,14 +1001,14 @@ PARAMETERS
 		
 		INCOME_cc=EleGen_price*Wnet+vapor_price*vapor-water_price*water-bagasse_price*greet.bagasse+CarbonCredit;
 	
-		INCOME=EleGen_price*Wnet+vapor_price*vapor-water_price*water-bagasse_price*greet.bagasse;
+		INCOME=(EleGen_price*Wnet+vapor_price*vapor-water_price*water-bagasse_price*greet.bagasse)/(vapor+Wnet);
 		
-		#vapor_price=20*'US$/GJ';	
+		vapor_price=0*'US$/GJ';	
 	
 		#INCOME_cc= 0 *'US$';
 	
 	
-		INCOME= 0 *'US$';
+		#INCOME= 0 *'US$';
 	
 		ratio_water=CT.MakeupInlet.Fw/CT.Fw;
 	
