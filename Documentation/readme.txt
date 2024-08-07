@@ -12,4 +12,11 @@ Obs: the database methods need to be the one that is related with your impact da
 
 2 EMSO
 2.1 Install the file emso-academic-beta-win64-0.10.10
+2.2 Go in EMSO -> Plugins -> add EMSO_OLCA
+
+Please cite:
+
+Miyoshi, S.C.; Secchi, A.R. Simultaneous Life Cycle Assessment
+and Process Simulation for Sustainable Process Design. Processes
+2024, 12, 1285. https://doi.org/10.3390/pr12071285
 
