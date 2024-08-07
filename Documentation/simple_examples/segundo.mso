@@ -1,0 +1,71 @@
+using "types";
+
+# Source model
+Model Feed
+	
+VARIABLES	
+out F as flow_vol (Brief="Flow rate");
+	
+end
+
+# Sink model
+Model Sink
+	
+VARIABLES	
+in F as flow_vol (Brief="Flow rate");
+	
+end
+
+Model Tank_Basic
+
+PARAMETERS
+    K as Real (Brief="Valve constant", Unit='m^2.5/h', Default = 12);
+    D as length (Brief="Tank hydraulic diameter", Default = 4);
+
+VARIABLES
+in  Fin as flow_vol (Brief="Feed flow rate");
+out Fout as flow_vol (Brief ="Output flow rate");
+	V as volume (Brief="Liquid volume");
+    h as length (Brief="Tank level");
+    A as area (Brief="Cross section area");
+
+EQUATIONS
+ "Mass balance"
+	Fin - Fout = diff(V);
+ "Valve equation"
+	Fout = K * sqrt(h);
+ "Liquid volume"
+	V = A * h;
+end
+
+FlowSheet meusegundotanque
+	
+	
+	DEVICES
+	tanque1 as Tank_Basic;
+	Entrada as Feed;
+	Saida as Sink;
+	
+	CONNECTIONS
+	
+	Entrada to tanque1;
+	tanque1 to Saida;
+		
+	SET
+	tanque1.K = 5 * 'm^2.5/h';
+	tanque1.A = 1 * 'm^2';
+
+	SPECIFY
+	Entrada.F = 2 * (1 + sin(40*time*'rad/h')) * 'm^3/h';
+	
+	#Fe = 2 * 'm^3/h';
+	
+	INITIAL
+	tanque1.h = 0.5 * 'm';
+	
+	OPTIONS
+	TimeStart = 0;
+	TimeStep = 0.01;
+	TimeEnd = 1.5;
+	TimeUnit = 'h';
+end

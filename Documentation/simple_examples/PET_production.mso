@@ -1,0 +1,95 @@
+
+using "..//lca_model_bia";
+
+	
+	FlowSheet PET_production
+
+
+PARAMETERS
+
+
+	obj     as Plugin(Type= "EMSO_OLCA",
+	
+	UnitFilePath=["C:\Users\gama_\Documents\EMSO\EMSO_OLCA\EMSO_OLCA_units.csv"],
+		
+	#DataBasePath=["C:\Users\gama_\Documents\EMSO\EMSO_OLCA\MetodosData"],
+	
+	DataBasePath=["C:\Users\gama_\Documents\elcd_bottles_20220715"],
+
+	InputFileName=["C:\Users\gama_\Documents\Free_OpenLCA_Database\dados_polimeros.csv"],
+
+	Inputs=["Polyethylene high density granulate (PE-HD), production mix, at plant - RER",
+			"Polyethylene terephthalate (PET) granulate, production mix, at plant, amorphous - RER",
+			"Polypropylene granulate (PP), production mix, at plant - RER"],
+	
+	
+	OutputName=["PET_production"],
+	OutputUnit=["kg"],
+	
+	ElementaryFlows=["Carbon dioxide, fossil"],
+	
+	ElementaryFlowPath1=["Emission to air"],
+
+    ElementaryFlowPath2=["low population density"],
+	
+	MethodName= ["CML-IA baseline"],
+	
+	Characterization_Factor =[
+						"Global warming (GWP100a)",
+						"Photochemical oxidation",
+						"Human toxicity",
+						"Abiotic depletion",
+						"Eutrophication",
+						"Abiotic depletion (fossil fuels)",
+						"Marine aquatic ecotoxicity",
+						"Ozone layer depletion (ODP)", 
+						"Terrestrial ecotoxicity",
+						"Acidification",	
+						"Fresh water aquatic ecotox."],	
+	
+	MethodologyType=["attributional"],
+    AllocationType=["mass"]	,
+	AllocationUnits =["kg"]
+	);	
+	
+DEVICES
+	lca1	as LCABasic;
+	
+SET
+
+	lca1.ni=3;
+	lca1.ncf=11;
+	lca1.no=1;
+	lca1.ne=1;
+
+
+SPECIFY
+
+	#Inputs
+	lca1.input_values(1) =	0.004;
+ # kg Unidade massa
+	lca1.input_values(2) =	0.06; #  kg Unidade massa
+	lca1.input_values(3) =	0.001; # MJ Unidade energia
+	
+		
+	#In the same order to the Emission declared in PARAMETERS
+	lca1.emission_values(1) = 0;
+	
+
+	#In the same order to the Output declared in PARAMETERS
+	# SPECIFY HERE THE QUANTITIES (DIMENSIONLESS)
+	lca1.output_values(1)= 1; 
+
+	lca1.alloc_par(1)=0.065;
+	
+	
+
+EQUATIONS
+
+
+
+
+
+
+
+end

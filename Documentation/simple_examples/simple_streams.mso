@@ -1,0 +1,59 @@
+
+using "types";
+
+Model MaterialStream
+
+ATTRIBUTES
+	Pallete 	= false;
+	Brief 		= "General material stream";
+	Info 		=
+"This is the basic building block for models. 
+Every model should have input and output streams derived from this model.
+";
+	
+VARIABLES
+
+	Fvol 	 as flow_vol			(Brief="Volumetric Flow", Symbol = "F_{vol}");
+	T   		as temperature	(Brief="Temperature");
+	P   		as pressure		(Brief="Pressure",DisplayUnit = 'kPa');
+
+end
+
+Model Materialsource
+
+ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/Source";
+	Brief = "Material stream source";
+	Info = 
+"This model should be used for boundary streams. 
+Usually these streams are known and come from another process	units.
+
+==	The user should specify ==
+* Total Volumetric Flow
+* Temperature
+* Pressure
+";
+
+VARIABLES
+
+out	Outlet  as MaterialStream (Brief="Outlet Stream", PosX = 1);
+
+end
+
+Model Materialsink
+	
+ATTRIBUTES
+	Pallete = true;
+	Icon = "icon/Sink";
+	Brief = "Material stream sink";
+	Info = "
+This model should be used for boundary streams when additional
+information about the stream is desired.
+";
+
+VARIABLES
+
+in	Inlet  as MaterialStream (Brief="Inlet Stream", PosX = 0);
+
+end
